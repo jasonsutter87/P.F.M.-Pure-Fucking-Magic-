@@ -1,0 +1,48 @@
+#!PFM/1.0
+#@meta
+id: aa2e0354-578f-4740-bb69-82a18443182b
+agent: claude-code
+model: claude-opus-4-6
+created: 2026-02-16T20:02:37.085863+00:00
+checksum: 049dcea084f4b095226b78491c11bb10066c7bb7aa6e1f1be777a31beea2f782
+tags: example,demo
+version: 1.0
+#@index
+content 329 398
+chain 735 330
+tools 1073 188
+metrics 1271 110
+#@content
+# Analysis Report
+
+The codebase follows a clean MVC architecture with the following key findings:
+
+1. Authentication is handled via JWT tokens with 24h expiry
+2. Database queries use parameterized statements (no SQL injection risk)
+3. Rate limiting is configured at 100 req/min per API key
+4. CORS is properly restricted to known origins
+
+Recommendation: Add request signing for webhook endpoints.
+#@chain
+User: Analyze this codebase for security issues and architecture patterns.
+
+Agent: I'll examine the project structure, authentication flow, database layer,
+and API configuration.
+
+[Searched: auth/*.py, db/*.py, api/middleware.py]
+[Read: 12 files, 3,400 lines]
+[Tools: grep for SQL queries, checked CORS headers, traced auth flow]
+#@tools
+grep(pattern="SELECT|INSERT|UPDATE|DELETE", path="db/")
+read_file("api/middleware.py")
+read_file("auth/jwt_handler.py")
+read_file("config/cors.py")
+grep(pattern="rate_limit", path="api/")
+#@metrics
+tokens_in: 12450
+tokens_out: 3200
+latency_ms: 8934
+model_cost_usd: 0.0847
+files_read: 12
+lines_analyzed: 3400
+#!END
