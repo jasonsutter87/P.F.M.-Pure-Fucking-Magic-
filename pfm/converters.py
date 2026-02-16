@@ -39,30 +39,57 @@ def to_json(doc: PFMDocument, indent: int = 2) -> str:
 
 
 def from_json(json_str: str) -> PFMDocument:
-    """Create PFM document from JSON string."""
+    """Create PFM document from JSON string.
+
+    Validates the structure of the parsed JSON to prevent type confusion attacks.
+    Rejects keys that could cause prototype-pollution-like issues in downstream JS.
+    """
     data = json.loads(json_str)
+
+    # Validate top-level structure
+    if not isinstance(data, dict):
+        raise ValueError("Invalid PFM JSON: expected a JSON object at top level")
+
     meta = data.get("meta", {})
+    if not isinstance(meta, dict):
+        raise ValueError("Invalid PFM JSON: 'meta' must be a JSON object")
+
+    # Validate all meta values are strings
+    safe_meta = {}
+    for key, val in meta.items():
+        if not isinstance(key, str) or not isinstance(val, str):
+            continue
+        safe_meta[key] = val
 
     doc = PFMDocument(
-        id=meta.get("id", ""),
-        agent=meta.get("agent", ""),
-        model=meta.get("model", ""),
-        created=meta.get("created", ""),
-        checksum=meta.get("checksum", ""),
-        parent=meta.get("parent", ""),
-        tags=meta.get("tags", ""),
-        version=meta.get("version", ""),
-        format_version=data.get("pfm_version", "1.0"),
+        id=safe_meta.get("id", ""),
+        agent=safe_meta.get("agent", ""),
+        model=safe_meta.get("model", ""),
+        created=safe_meta.get("created", ""),
+        checksum=safe_meta.get("checksum", ""),
+        parent=safe_meta.get("parent", ""),
+        tags=safe_meta.get("tags", ""),
+        version=safe_meta.get("version", ""),
+        format_version=data.get("pfm_version", "1.0") if isinstance(data.get("pfm_version"), str) else "1.0",
     )
 
     # Custom meta fields
     reserved = {"id", "agent", "model", "created", "checksum", "parent", "tags", "version"}
-    for key, val in meta.items():
+    for key, val in safe_meta.items():
         if key not in reserved:
             doc.custom_meta[key] = val
 
-    for section in data.get("sections", []):
-        doc.add_section(section["name"], section["content"])
+    sections = data.get("sections", [])
+    if not isinstance(sections, list):
+        raise ValueError("Invalid PFM JSON: 'sections' must be an array")
+
+    for section in sections:
+        if not isinstance(section, dict):
+            continue
+        name = section.get("name")
+        content = section.get("content")
+        if isinstance(name, str) and isinstance(content, str):
+            doc.add_section(name, content)
 
     return doc
 
@@ -93,7 +120,12 @@ def to_csv(doc: PFMDocument) -> str:
 
 
 def from_csv(csv_str: str) -> PFMDocument:
-    """Create PFM document from CSV string."""
+    """Create PFM document from CSV string.
+
+    Validates row types and enforces field count limits.
+    """
+    from pfm.spec import MAX_META_FIELDS
+
     reader = csv.reader(io.StringIO(csv_str))
     header = next(reader, None)  # Skip header row
 
@@ -104,10 +136,17 @@ def from_csv(csv_str: str) -> PFMDocument:
             continue
         row_type, key, value = row[0], row[1], row[2]
 
+        # Validate types are strings
+        if not isinstance(key, str) or not isinstance(value, str):
+            continue
+
         if row_type == "meta":
             if key in META_ALLOWLIST:
                 setattr(doc, key, value)
             else:
+                # Enforce custom meta field count limit
+                if len(doc.custom_meta) >= MAX_META_FIELDS:
+                    continue
                 doc.custom_meta[key] = value
         elif row_type == "section":
             doc.add_section(key, value)
@@ -187,7 +226,11 @@ def from_markdown(md_str: str) -> PFMDocument:
     Create PFM document from Markdown.
     Parses YAML-style frontmatter for meta, ## headers as sections.
     If no headers found, treats entire content as a single 'content' section.
+
+    Enforces meta field count limits from spec.
     """
+    from pfm.spec import MAX_META_FIELDS
+
     doc = PFMDocument()
     lines = md_str.split("\n")
     i = 0
@@ -204,7 +247,9 @@ def from_markdown(md_str: str) -> PFMDocument:
                 if key in META_ALLOWLIST:
                     setattr(doc, key, val)
                 else:
-                    doc.custom_meta[key] = val
+                    # Enforce custom meta field count limit
+                    if len(doc.custom_meta) < MAX_META_FIELDS:
+                        doc.custom_meta[key] = val
             i += 1
         i += 1  # Skip closing ---
 
