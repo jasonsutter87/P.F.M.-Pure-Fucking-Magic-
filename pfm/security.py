@@ -2,10 +2,10 @@
 PFM Security - Cryptographic signing, verification, and encryption.
 
 Security features:
-  - HMAC-SHA256 signing (shared secret)
-  - Content integrity verification via checksum
-  - AES-256-GCM encryption for sensitive .pfm files
-  - Tamper detection (signature covers meta + all sections)
+  - HMAC-SHA256 signing (shared secret) with length-prefixed canonical encoding
+  - Content integrity verification via checksum (fail-closed)
+  - AES-256-GCM encryption with AAD binding for sensitive .pfm files
+  - Tamper detection (signature covers meta + section order + contents)
   - Key derivation via PBKDF2 for password-based encryption
 """
 
@@ -14,11 +14,14 @@ from __future__ import annotations
 import hashlib
 import hmac
 import os
-import base64
+import struct
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from pfm.document import PFMDocument
+
+# AAD (Additional Authenticated Data) for AES-GCM binding
+_AES_AAD = b"PFM-ENC/1.0"
 
 
 # =============================================================================
@@ -71,20 +74,33 @@ def verify(doc: PFMDocument, secret: str | bytes) -> bool:
 
 
 def _build_signing_message(doc: PFMDocument) -> bytes:
-    """Build the canonical message bytes for signing."""
-    parts = []
+    """
+    Build the canonical message bytes for signing.
 
-    # Include key meta fields in deterministic order
-    for key in sorted(doc.get_meta_dict().keys()):
-        val = doc.get_meta_dict()[key]
-        parts.append(f"{key}={val}".encode("utf-8"))
+    Uses length-prefixed encoding to prevent delimiter confusion (PFM-011 fix).
+    Each field is: 4-byte big-endian length + raw bytes.
+    Section ordering is preserved in the signature (PFM-016 fix).
+    """
+    buf = bytearray()
 
-    # Include all section names and contents
+    def _append(data: bytes) -> None:
+        buf.extend(struct.pack(">I", len(data)))
+        buf.extend(data)
+
+    # Include format version
+    _append(doc.format_version.encode("utf-8"))
+
+    # Include meta fields in deterministic order
+    meta = doc.get_meta_dict()
+    for key in sorted(meta.keys()):
+        _append(f"{key}={meta[key]}".encode("utf-8"))
+
+    # Include all section names and contents (order matters)
     for section in doc.sections:
-        parts.append(f"[{section.name}]".encode("utf-8"))
-        parts.append(section.content.encode("utf-8"))
+        _append(section.name.encode("utf-8"))
+        _append(section.content.encode("utf-8"))
 
-    return b"\x00".join(parts)
+    return bytes(buf)
 
 
 # =============================================================================
@@ -107,8 +123,7 @@ def encrypt_bytes(data: bytes, password: str) -> bytes:
     Encrypt raw bytes with AES-256-GCM using a password.
     Returns: salt (16) + nonce (12) + ciphertext + tag (16)
 
-    Uses the `cryptography` library if available, falls back to
-    a pure-Python XChaCha20-like construction warning if not.
+    Uses AAD to bind the encryption to PFM context (PFM-006 fix).
     """
     try:
         from cryptography.hazmat.primitives.ciphers.aead import AESGCM
@@ -123,7 +138,7 @@ def encrypt_bytes(data: bytes, password: str) -> bytes:
     key = _derive_key(password, salt)
 
     aesgcm = AESGCM(key)
-    ciphertext = aesgcm.encrypt(nonce, data, None)
+    ciphertext = aesgcm.encrypt(nonce, data, _AES_AAD)
 
     return salt + nonce + ciphertext
 
@@ -148,7 +163,7 @@ def decrypt_bytes(encrypted: bytes, password: str) -> bytes:
     key = _derive_key(password, salt)
     aesgcm = AESGCM(key)
 
-    return aesgcm.decrypt(nonce, ciphertext, None)
+    return aesgcm.decrypt(nonce, ciphertext, _AES_AAD)
 
 
 def encrypt_document(doc: PFMDocument, password: str) -> bytes:
@@ -196,10 +211,11 @@ def is_encrypted_pfm(data: bytes) -> bool:
 def verify_integrity(doc: PFMDocument) -> bool:
     """
     Verify document integrity by recomputing and comparing checksum.
-    Returns True if checksum matches (content hasn't been modified).
+
+    PFM-005 fix: Returns False if no checksum is stored (fail-closed).
     """
     if not doc.checksum:
-        return True  # No checksum stored
+        return False  # No checksum = not verified
     return doc.checksum == doc.compute_checksum()
 
 

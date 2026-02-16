@@ -16,6 +16,7 @@ import json
 from typing import Any
 
 from pfm.document import PFMDocument, PFMSection
+from pfm.spec import META_ALLOWLIST
 
 
 # =============================================================================
@@ -97,7 +98,6 @@ def from_csv(csv_str: str) -> PFMDocument:
     header = next(reader, None)  # Skip header row
 
     doc = PFMDocument()
-    reserved = {"id", "agent", "model", "created", "checksum", "parent", "tags", "version"}
 
     for row in reader:
         if len(row) < 3:
@@ -105,7 +105,7 @@ def from_csv(csv_str: str) -> PFMDocument:
         row_type, key, value = row[0], row[1], row[2]
 
         if row_type == "meta":
-            if key in reserved and hasattr(doc, key):
+            if key in META_ALLOWLIST:
                 setattr(doc, key, value)
             else:
                 doc.custom_meta[key] = value
@@ -201,8 +201,7 @@ def from_markdown(md_str: str) -> PFMDocument:
                 key, val = line.split(": ", 1)
                 key = key.strip()
                 val = val.strip()
-                reserved = {"id", "agent", "model", "created", "checksum", "parent", "tags", "version"}
-                if key in reserved and hasattr(doc, key):
+                if key in META_ALLOWLIST:
                     setattr(doc, key, val)
                 else:
                     doc.custom_meta[key] = val

@@ -12,7 +12,7 @@ from __future__ import annotations
 import io
 from typing import TYPE_CHECKING
 
-from pfm.spec import MAGIC, EOF_MARKER, SECTION_PREFIX, FORMAT_VERSION
+from pfm.spec import MAGIC, EOF_MARKER, SECTION_PREFIX, FORMAT_VERSION, escape_content
 
 if TYPE_CHECKING:
     from pfm.document import PFMDocument
@@ -27,11 +27,13 @@ class PFMWriter:
         # Compute checksum before serialization
         doc.checksum = doc.compute_checksum()
 
-        # --- Pass 1: Pre-serialize sections ---
+        # --- Pass 1: Pre-serialize sections (with content escaping) ---
         section_blobs: list[tuple[str, bytes]] = []
         for section in doc.sections:
             header_line = f"{SECTION_PREFIX}{section.name}\n".encode("utf-8")
-            content_bytes = section.content.encode("utf-8")
+            # Escape content lines that look like PFM markers
+            escaped = escape_content(section.content)
+            content_bytes = escaped.encode("utf-8")
             # Ensure content ends with newline
             if not content_bytes.endswith(b"\n"):
                 content_bytes += b"\n"

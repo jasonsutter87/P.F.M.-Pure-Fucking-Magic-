@@ -202,9 +202,10 @@ class TestIntegrity:
         assert verify_integrity(doc) is False
 
     def test_verify_integrity_no_checksum(self):
+        """PFM-005: No checksum should fail-closed (return False)."""
         doc = PFMDocument.create()
         doc.add_section("content", "no checksum")
-        assert verify_integrity(doc) is True
+        assert verify_integrity(doc) is False
 
 
 class TestFingerprint:

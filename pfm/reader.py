@@ -6,6 +6,12 @@ Speed features:
   - Index-based O(1) section access (seek directly to any section by byte offset)
   - Lazy loading: only reads sections when requested
   - Streaming: can parse from file handle without loading entire file into memory
+
+Security features:
+  - Content unescaping (reverses writer escaping of #@/#! markers)
+  - Strict allowlist for meta field parsing (no arbitrary setattr)
+  - File size limits (prevents OOM from crafted files)
+  - Index bounds validation (prevents out-of-bounds reads)
 """
 
 from __future__ import annotations
@@ -14,7 +20,11 @@ import hashlib
 from pathlib import Path
 from typing import BinaryIO
 
-from pfm.spec import MAGIC, EOF_MARKER, SECTION_PREFIX, MAX_MAGIC_SCAN_BYTES
+from pfm.spec import (
+    MAGIC, EOF_MARKER, SECTION_PREFIX, MAX_MAGIC_SCAN_BYTES,
+    META_ALLOWLIST, MAX_FILE_SIZE,
+    unescape_content,
+)
 from pfm.document import PFMDocument, PFMSection
 
 
@@ -84,8 +94,15 @@ class PFMReader:
         return data[:len(MAGIC)].startswith(MAGIC.encode("utf-8"))
 
     @classmethod
-    def read(cls, path: str | Path) -> PFMDocument:
+    def read(cls, path: str | Path, max_size: int = MAX_FILE_SIZE) -> PFMDocument:
         """Fully parse a .pfm file into a PFMDocument."""
+        path = Path(path)
+        file_size = path.stat().st_size
+        if file_size > max_size:
+            raise ValueError(
+                f"File size {file_size} exceeds maximum {max_size} bytes. "
+                f"Pass max_size= to override."
+            )
         with open(path, "rb") as f:
             data = f.read()
         return cls.parse(data)
@@ -113,11 +130,11 @@ class PFMReader:
                 i += 1
                 continue
 
-            # EOF marker
+            # EOF marker (only match unescaped)
             if line.startswith(EOF_MARKER):
                 break
 
-            # Section header
+            # Section header (only match unescaped — escaped lines start with \#)
             if line.startswith(SECTION_PREFIX):
                 # Flush previous section
                 skip_sections = ("meta", "index", "index:trailing")
@@ -126,6 +143,8 @@ class PFMReader:
                     # Strip trailing newline that writer adds
                     if content.endswith("\n"):
                         content = content[:-1]
+                    # Unescape content lines
+                    content = unescape_content(content)
                     doc.add_section(current_section, content)
 
                 section_name = line[len(SECTION_PREFIX):]
@@ -136,13 +155,13 @@ class PFMReader:
                 i += 1
                 continue
 
-            # Meta key-value pairs
+            # Meta key-value pairs (strict allowlist — PFM-002 fix)
             if in_meta:
                 if ": " in line:
                     key, val = line.split(": ", 1)
                     key = key.strip()
                     val = val.strip()
-                    if hasattr(doc, key) and key != "custom_meta":
+                    if key in META_ALLOWLIST:
                         setattr(doc, key, val)
                     else:
                         doc.custom_meta[key] = val
@@ -159,7 +178,7 @@ class PFMReader:
                 i += 1
                 continue
 
-            # Section content
+            # Section content (raw — unescaping happens on flush)
             if current_section:
                 section_lines.append(line)
 
@@ -170,13 +189,21 @@ class PFMReader:
             content = "\n".join(section_lines)
             if content.endswith("\n"):
                 content = content[:-1]
+            content = unescape_content(content)
             doc.add_section(current_section, content)
 
         return doc
 
     @classmethod
-    def open(cls, path: str | Path) -> PFMReaderHandle:
+    def open(cls, path: str | Path, max_size: int = MAX_FILE_SIZE) -> PFMReaderHandle:
         """Open a .pfm file for indexed, lazy reading."""
+        path = Path(path)
+        file_size = path.stat().st_size
+        if file_size > max_size:
+            raise ValueError(
+                f"File size {file_size} exceeds maximum {max_size} bytes. "
+                f"Pass max_size= to override."
+            )
         f = builtins_open(path, "rb")
         raw = f.read()
         f.seek(0)
@@ -242,7 +269,11 @@ class PFMReaderHandle:
                 parts = line.strip().split()
                 if len(parts) == 3 and parts[0] != "checksum":
                     name, offset, length = parts
-                    self.index.add(name, int(offset), int(length))
+                    off = int(offset)
+                    ln = int(length)
+                    # PFM-008: Validate index bounds
+                    if 0 <= off and off + ln <= len(self._raw):
+                        self.index.add(name, off, ln)
 
             i += 1
 
@@ -252,7 +283,6 @@ class PFMReaderHandle:
 
     def _parse_trailing_index(self, lines: list[str]) -> None:
         """Parse trailing index from the end of a stream-mode file."""
-        in_index = False
         for line in reversed(lines):
             if line.startswith(EOF_MARKER):
                 continue
@@ -264,8 +294,9 @@ class PFMReaderHandle:
             if len(parts) == 3 and parts[0] != "checksum":
                 try:
                     name, offset, length = parts[0], int(parts[1]), int(parts[2])
-                    self.index.add(name, offset, length)
-                    in_index = True
+                    # PFM-008: Validate bounds
+                    if 0 <= offset and offset + length <= len(self._raw):
+                        self.index.add(name, offset, length)
                 except ValueError:
                     continue
             elif len(parts) == 2 and parts[0] == "checksum":
@@ -277,13 +308,16 @@ class PFMReaderHandle:
         if entry is None:
             return None
         offset, length = entry
-        return self._raw[offset:offset + length].decode("utf-8")
+        raw = self._raw[offset:offset + length].decode("utf-8")
+        # Unescape content
+        return unescape_content(raw)
 
     def get_sections(self, name: str) -> list[str]:
         """Get all sections with the given name."""
         results = []
         for offset, length in self.index.get_all(name):
-            results.append(self._raw[offset:offset + length].decode("utf-8"))
+            raw = self._raw[offset:offset + length].decode("utf-8")
+            results.append(unescape_content(raw))
         return results
 
     @property
@@ -295,13 +329,16 @@ class PFMReaderHandle:
         return PFMReader.parse(self._raw)
 
     def validate_checksum(self) -> bool:
-        """Validate the checksum in meta against actual content."""
+        """Validate the checksum in meta against actual content.
+
+        PFM-005 fix: Returns False if no checksum is present (fail-closed).
+        """
         expected = self.meta.get("checksum", "")
         if not expected:
-            return True  # No checksum to validate
+            return False  # No checksum = not validated
 
-        # Checksum is computed from section content strings (without trailing newline
-        # added by writer), matching how PFMDocument.compute_checksum() works.
+        # Checksum is computed from UNESCAPED section content strings
+        # (without trailing newline), matching PFMDocument.compute_checksum().
         h = hashlib.sha256()
         for name in self.index.section_names:
             for offset, length in self.index.get_all(name):
@@ -309,7 +346,9 @@ class PFMReaderHandle:
                 # Strip the trailing newline that the writer appends
                 if chunk.endswith(b"\n"):
                     chunk = chunk[:-1]
-                h.update(chunk)
+                # Unescape before checksumming (checksum covers original content)
+                unescaped = unescape_content(chunk.decode("utf-8")).encode("utf-8")
+                h.update(unescaped)
         return h.hexdigest() == expected
 
     def close(self) -> None:

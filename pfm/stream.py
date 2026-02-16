@@ -44,11 +44,12 @@ from __future__ import annotations
 
 import hashlib
 import os
+import shutil
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 
-from pfm.spec import MAGIC, EOF_MARKER, SECTION_PREFIX, FORMAT_VERSION
+from pfm.spec import MAGIC, EOF_MARKER, SECTION_PREFIX, FORMAT_VERSION, escape_content
 
 
 class PFMStreamWriter:
@@ -76,7 +77,8 @@ class PFMStreamWriter:
             self._checksum = hashlib.sha256()
             raw = self.path.read_bytes()
             for name, offset, length in self._sections:
-                self._checksum.update(raw[offset:offset + length])
+                if 0 <= offset and offset + length <= len(raw):
+                    self._checksum.update(raw[offset:offset + length])
             # Position at end, before any trailing index/EOF
             self._handle.seek(0, 2)
         else:
@@ -108,7 +110,9 @@ class PFMStreamWriter:
         header = f"{SECTION_PREFIX}{name}\n"
         self._handle.write(header.encode("utf-8"))
 
-        content_bytes = content.encode("utf-8")
+        # Escape content lines that look like PFM markers
+        escaped = escape_content(content)
+        content_bytes = escaped.encode("utf-8")
         offset = self._handle.tell()
         self._handle.write(content_bytes)
 
@@ -120,7 +124,8 @@ class PFMStreamWriter:
             length = len(content_bytes)
 
         self._sections.append((name, offset, length))
-        self._checksum.update(content_bytes)
+        # Checksum covers the original unescaped content
+        self._checksum.update(content.encode("utf-8"))
 
         # Flush to disk immediately — this is the whole point
         self._handle.flush()
@@ -171,7 +176,13 @@ def _recover(path: Path) -> tuple:
     Recover a streamed .pfm file (e.g., after crash).
     Scans for section markers and rebuilds the section list.
     Returns (file_handle, sections) with handle positioned for appending.
+
+    PFM-004 fix: Creates backup before truncation, uses rfind for marker search.
     """
+    # Create backup before any modifications
+    backup_path = path.with_suffix(path.suffix + ".bak")
+    shutil.copy2(path, backup_path)
+
     raw = path.read_bytes()
     text = raw.decode("utf-8")
     lines = text.split("\n")
@@ -187,7 +198,8 @@ def _recover(path: Path) -> tuple:
         line = lines[i]
         line_bytes = len(line.encode("utf-8")) + 1  # +1 for newline
 
-        if line.startswith(SECTION_PREFIX):
+        # Only match unescaped section markers
+        if line.startswith(SECTION_PREFIX) and not line.startswith("\\#"):
             # Flush previous section
             if current_section_name is not None:
                 length = byte_pos - current_content_start
@@ -202,7 +214,7 @@ def _recover(path: Path) -> tuple:
                 current_section_name = section_tag
                 current_content_start = byte_pos + line_bytes
 
-        elif line.startswith(EOF_MARKER) or line.startswith(MAGIC):
+        elif (line.startswith(EOF_MARKER) or line.startswith(MAGIC)) and not line.startswith("\\#"):
             # Flush previous section
             if current_section_name is not None:
                 length = byte_pos - current_content_start
@@ -218,18 +230,18 @@ def _recover(path: Path) -> tuple:
         sections.append((current_section_name, current_content_start, length))
 
     # Strip any trailing index/EOF for appending
-    # Find the start of trailing index or EOF and truncate there
+    # PFM-004 fix: Use rfind to find the LAST occurrence, not the first
     truncate_at = len(raw)
-    for line in reversed(lines):
-        if line.startswith(f"{SECTION_PREFIX}index:trailing") or line.startswith(EOF_MARKER):
-            truncate_at = text.index(line)
-            # Also need byte offset
-            truncate_at = len(text[:truncate_at].encode("utf-8"))
-            break
-        elif line.strip() == "":
-            continue
-        else:
-            break
+    trailing_marker = f"{SECTION_PREFIX}index:trailing"
+    # Search from end of file for trailing index marker
+    rpos = text.rfind(trailing_marker)
+    if rpos >= 0:
+        truncate_at = len(text[:rpos].encode("utf-8"))
+    else:
+        # No trailing index — look for EOF marker from end
+        eof_pos = text.rfind(EOF_MARKER)
+        if eof_pos >= 0:
+            truncate_at = len(text[:eof_pos].encode("utf-8"))
 
     handle = open(path, "r+b")
     handle.seek(truncate_at)
