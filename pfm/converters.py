@@ -226,7 +226,14 @@ def from_markdown(md_str: str) -> PFMDocument:
                 if pre_content:
                     doc.add_section("content", pre_content)
 
-            current_section = line[3:].strip()
+            # Normalize section name: lowercase, replace spaces with underscores,
+            # strip non-alphanumeric chars for PFM section name compatibility
+            raw_name = line[3:].strip()
+            normalized = raw_name.lower().replace(" ", "_").replace("-", "_")
+            normalized = "".join(
+                c for c in normalized if c in "abcdefghijklmnopqrstuvwxyz0123456789_-"
+            )
+            current_section = normalized or "content"
             section_lines = []
         elif current_section is None:
             content_before_sections.append(line)

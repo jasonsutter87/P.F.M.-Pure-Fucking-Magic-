@@ -30,7 +30,12 @@ def cmd_create(args: argparse.Namespace) -> None:
     if args.content:
         content = args.content
     elif args.file:
-        content = Path(args.file).read_text(encoding="utf-8")
+        # PFM-005/CLI: Resolve path and reject traversal attempts
+        file_path = Path(args.file).resolve()
+        if ".." in Path(args.file).parts:
+            print("Error: Path traversal (..) not allowed in --file", file=sys.stderr)
+            sys.exit(1)
+        content = file_path.read_text(encoding="utf-8")
     elif not sys.stdin.isatty():
         content = sys.stdin.read()
     else:
@@ -108,8 +113,13 @@ def cmd_validate(args: argparse.Namespace) -> None:
             else:
                 print(f"FAIL: {path} checksum mismatch")
                 sys.exit(1)
-    except Exception as e:
-        print(f"FAIL: {path} parse error: {e}")
+    except ValueError as e:
+        # ValueError from parser (version, format, bounds) -- safe to show
+        print(f"FAIL: parse error: {e}")
+        sys.exit(1)
+    except Exception:
+        # PFM-018 fix: Generic errors do not leak internal paths or stack details
+        print(f"FAIL: unable to parse file (corrupted or invalid format)")
         sys.exit(1)
 
 

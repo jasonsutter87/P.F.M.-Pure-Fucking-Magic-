@@ -9,6 +9,12 @@ import uuid
 from datetime import datetime, timezone
 from dataclasses import dataclass, field
 
+from pfm.spec import (
+    MAX_SECTIONS,
+    MAX_SECTION_NAME_LENGTH,
+    ALLOWED_SECTION_NAME_CHARS,
+)
+
 
 @dataclass
 class PFMSection:
@@ -72,8 +78,37 @@ class PFMDocument:
             custom_meta=custom_meta,
         )
 
+    # Reserved names that cannot be used as content section names
+    _RESERVED_SECTION_NAMES = frozenset({"meta", "index", "index:trailing"})
+
     def add_section(self, name: str, content: str) -> PFMSection:
-        """Add a named section. Returns the section for chaining."""
+        """Add a named section. Returns the section for chaining.
+
+        PFM-015 fix: Validates section name format and enforces limits.
+        PFM-014 fix: Enforces maximum section count.
+        """
+        # Validate section name
+        if not name:
+            raise ValueError("Section name cannot be empty")
+        if len(name) > MAX_SECTION_NAME_LENGTH:
+            raise ValueError(
+                f"Section name too long: {len(name)} chars "
+                f"(max {MAX_SECTION_NAME_LENGTH})"
+            )
+        if not all(c in ALLOWED_SECTION_NAME_CHARS for c in name):
+            raise ValueError(
+                f"Invalid section name: {name!r}. "
+                f"Only lowercase alphanumeric, hyphens, and underscores allowed."
+            )
+        if name in self._RESERVED_SECTION_NAMES:
+            raise ValueError(f"Reserved section name: {name!r}")
+
+        # Enforce section count limit
+        if len(self.sections) >= MAX_SECTIONS:
+            raise ValueError(
+                f"Maximum section count exceeded: {MAX_SECTIONS}"
+            )
+
         section = PFMSection(name=name, content=content)
         self.sections.append(section)
         return section

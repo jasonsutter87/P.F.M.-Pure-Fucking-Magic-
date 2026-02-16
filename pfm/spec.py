@@ -48,11 +48,16 @@ ESCAPE_PREFIX = "\\#"  # Escape for content lines that look like markers
 # Format version
 FORMAT_VERSION = "1.0"
 
+# Supported format versions (reject unknown versions to prevent downgrade attacks)
+SUPPORTED_FORMAT_VERSIONS = frozenset({"1.0"})
+
 # Strict allowlist for meta fields settable via parser
 META_ALLOWLIST = frozenset({"id", "agent", "model", "created", "checksum", "parent", "tags", "version"})
 
 # Safety limits
 MAX_FILE_SIZE = 500 * 1024 * 1024  # 500MB max file size for reader
+MAX_SECTIONS = 10_000              # Max sections per document (prevents resource exhaustion)
+MAX_META_FIELDS = 100              # Max custom meta fields
 MAX_SECTION_NAME_LENGTH = 64       # Max length for section names
 ALLOWED_SECTION_NAME_CHARS = frozenset("abcdefghijklmnopqrstuvwxyz0123456789_-")
 

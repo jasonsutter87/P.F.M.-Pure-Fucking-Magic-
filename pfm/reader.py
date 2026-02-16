@@ -17,12 +17,13 @@ Security features:
 from __future__ import annotations
 
 import hashlib
+import hmac as _hmac
 from pathlib import Path
 from typing import BinaryIO
 
 from pfm.spec import (
     MAGIC, EOF_MARKER, SECTION_PREFIX, MAX_MAGIC_SCAN_BYTES,
-    META_ALLOWLIST, MAX_FILE_SIZE,
+    META_ALLOWLIST, MAX_FILE_SIZE, MAX_META_FIELDS, SUPPORTED_FORMAT_VERSIONS,
     unescape_content,
 )
 from pfm.document import PFMDocument, PFMSection
@@ -126,7 +127,13 @@ class PFMReader:
             # Magic line (handles both "#!PFM/1.0" and "#!PFM/1.0:STREAM")
             if line.startswith(MAGIC):
                 version_part = line.split("/", 1)[1] if "/" in line else "1.0"
-                doc.format_version = version_part.split(":")[0]  # Strip :STREAM flag
+                parsed_version = version_part.split(":")[0]  # Strip :STREAM flag
+                if parsed_version not in SUPPORTED_FORMAT_VERSIONS:
+                    raise ValueError(
+                        f"Unsupported PFM format version: {parsed_version!r}. "
+                        f"Supported: {', '.join(sorted(SUPPORTED_FORMAT_VERSIONS))}"
+                    )
+                doc.format_version = parsed_version
                 i += 1
                 continue
 
@@ -164,6 +171,11 @@ class PFMReader:
                     if key in META_ALLOWLIST:
                         setattr(doc, key, val)
                     else:
+                        # PFM-014: Enforce custom meta field count limit
+                        if len(doc.custom_meta) >= MAX_META_FIELDS:
+                            raise ValueError(
+                                f"Maximum custom meta fields exceeded: {MAX_META_FIELDS}"
+                            )
                         doc.custom_meta[key] = val
                 i += 1
                 continue
@@ -247,7 +259,13 @@ class PFMReaderHandle:
 
             if line.startswith(MAGIC):
                 version_part = line.split("/", 1)[1] if "/" in line else "1.0"
-                self.format_version = version_part.split(":")[0]
+                parsed_version = version_part.split(":")[0]
+                if parsed_version not in SUPPORTED_FORMAT_VERSIONS:
+                    raise ValueError(
+                        f"Unsupported PFM format version: {parsed_version!r}. "
+                        f"Supported: {', '.join(sorted(SUPPORTED_FORMAT_VERSIONS))}"
+                    )
+                self.format_version = parsed_version
                 is_stream = ":STREAM" in line
                 i += 1
                 continue
@@ -349,7 +367,7 @@ class PFMReaderHandle:
                 # Unescape before checksumming (checksum covers original content)
                 unescaped = unescape_content(chunk.decode("utf-8")).encode("utf-8")
                 h.update(unescaped)
-        return h.hexdigest() == expected
+        return _hmac.compare_digest(h.hexdigest(), expected)
 
     def close(self) -> None:
         self._handle.close()

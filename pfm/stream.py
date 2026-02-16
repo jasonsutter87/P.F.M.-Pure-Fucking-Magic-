@@ -42,6 +42,7 @@ Usage:
 
 from __future__ import annotations
 
+import fcntl
 import hashlib
 import os
 import shutil
@@ -49,7 +50,11 @@ import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 
-from pfm.spec import MAGIC, EOF_MARKER, SECTION_PREFIX, FORMAT_VERSION, escape_content
+from pfm.spec import (
+    MAGIC, EOF_MARKER, SECTION_PREFIX, FORMAT_VERSION,
+    MAX_FILE_SIZE, MAX_SECTIONS, MAX_SECTION_NAME_LENGTH,
+    ALLOWED_SECTION_NAME_CHARS, escape_content,
+)
 
 
 class PFMStreamWriter:
@@ -103,9 +108,38 @@ class PFMStreamWriter:
         self._handle.flush()
 
     def write_section(self, name: str, content: str) -> None:
-        """Write a section to disk immediately. Flushes after write."""
+        """Write a section to disk immediately. Flushes after write.
+
+        PFM-014/Stream: Enforces section count limits.
+        PFM-011/Stream: Enforces file size limits.
+        """
         if self._closed:
             raise RuntimeError("Cannot write to a closed PFMStreamWriter")
+
+        # PFM-015/Stream: Validate section name
+        if not name:
+            raise ValueError("Section name cannot be empty")
+        if len(name) > MAX_SECTION_NAME_LENGTH:
+            raise ValueError(
+                f"Section name too long: {len(name)} chars (max {MAX_SECTION_NAME_LENGTH})"
+            )
+        if not all(c in ALLOWED_SECTION_NAME_CHARS for c in name):
+            raise ValueError(
+                f"Invalid section name: {name!r}. "
+                f"Only lowercase alphanumeric, hyphens, and underscores allowed."
+            )
+
+        # Enforce section count limit
+        if len(self._sections) >= MAX_SECTIONS:
+            raise ValueError(f"Maximum section count exceeded: {MAX_SECTIONS}")
+
+        # Enforce file size limit
+        current_size = self._handle.tell()
+        new_bytes = len(name.encode("utf-8")) + len(content.encode("utf-8")) + 10
+        if current_size + new_bytes > MAX_FILE_SIZE:
+            raise ValueError(
+                f"File size would exceed maximum ({MAX_FILE_SIZE} bytes)"
+            )
 
         header = f"{SECTION_PREFIX}{name}\n"
         self._handle.write(header.encode("utf-8"))
@@ -244,6 +278,14 @@ def _recover(path: Path) -> tuple:
             truncate_at = len(text[:eof_pos].encode("utf-8"))
 
     handle = open(path, "r+b")
+    # PFM-008/Stream: Acquire exclusive lock to prevent TOCTOU race conditions
+    try:
+        fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except (OSError, IOError):
+        handle.close()
+        raise RuntimeError(
+            f"Cannot acquire lock on {path}: file is in use by another process"
+        )
     handle.seek(truncate_at)
     handle.truncate()
 

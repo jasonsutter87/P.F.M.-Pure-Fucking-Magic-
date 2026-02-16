@@ -128,9 +128,19 @@ class PFMWriter:
         return out.getvalue()
 
     @staticmethod
-    def write(doc: PFMDocument, path: str) -> int:
-        """Write a PFMDocument to a file. Returns bytes written."""
+    def write(doc: PFMDocument, path: str, mode: int = 0o644) -> int:
+        """Write a PFMDocument to a file. Returns bytes written.
+
+        PFM-019 fix: Uses explicit file permissions (default 0644).
+        For sensitive files, pass mode=0o600.
+        """
+        import os
         data = PFMWriter.serialize(doc)
-        with open(path, "wb") as f:
-            f.write(data)
+        fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, mode)
+        try:
+            with os.fdopen(fd, 'wb') as f:
+                f.write(data)
+        except Exception:
+            # fd is consumed by fdopen even on error
+            raise
         return len(data)

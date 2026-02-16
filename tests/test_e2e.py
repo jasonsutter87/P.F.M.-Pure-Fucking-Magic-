@@ -148,7 +148,11 @@ class TestFullWorkflow:
         assert loaded.chain == ""
 
     def test_special_characters_in_content(self):
-        """Content with characters that look like PFM markers."""
+        """Content with characters that look like PFM markers.
+
+        PFM-001 fix verification: Content escaping ensures round-trip fidelity
+        for content containing #@ and #! marker sequences.
+        """
         tricky = "#!PFM/1.0\n#@content\nfake section\n#!END"
         doc = PFMDocument.create(agent="tricky")
         doc.add_section("content", tricky)
@@ -156,9 +160,8 @@ class TestFullWorkflow:
         data = PFMWriter.serialize(doc)
         loaded = PFMReader.parse(data)
 
-        # The content should be preserved as-is
-        # (This is a known edge case - section markers in content)
-        assert loaded.content is not None
+        # Content MUST be preserved exactly (escaping/unescaping round-trips)
+        assert loaded.content == tricky
 
     def test_file_to_multiple_formats_and_back(self):
         """Write PFM, convert to JSON and MD, convert back, compare."""

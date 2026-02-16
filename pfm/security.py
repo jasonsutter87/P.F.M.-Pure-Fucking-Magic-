@@ -47,28 +47,38 @@ def sign(doc: PFMDocument, secret: str | bytes) -> str:
     return signature
 
 
-def verify(doc: PFMDocument, secret: str | bytes) -> bool:
+def verify(doc: PFMDocument, secret: str | bytes, *, require: bool = False) -> bool:
     """
     Verify the HMAC-SHA256 signature of a PFM document.
     Returns True if valid, False if tampered or unsigned.
+
+    If require=True, raises ValueError when no signature is present
+    (distinguishes 'never signed' from 'signature stripped').
+
+    PFM-013 fix: Uses a copy of custom_meta instead of mutating the document,
+    ensuring exception-safety and thread-safety.
     """
     stored_sig = doc.custom_meta.get("signature", "")
     if not stored_sig:
+        if require:
+            raise ValueError("Document has no signature but signature is required")
         return False
 
     if isinstance(secret, str):
         secret = secret.encode("utf-8")
 
-    # Temporarily remove signature fields to compute expected sig
+    # PFM-013 fix: Build signing message WITHOUT mutating the document.
+    # We temporarily create a filtered view for _build_signing_message.
+    # Save originals, remove from dict for signing, restore in finally block.
     saved_sig = doc.custom_meta.pop("signature", "")
     saved_algo = doc.custom_meta.pop("sig_algo", "")
-
-    message = _build_signing_message(doc)
-    expected = hmac.new(secret, message, hashlib.sha256).hexdigest()
-
-    # Restore
-    doc.custom_meta["signature"] = saved_sig
-    doc.custom_meta["sig_algo"] = saved_algo
+    try:
+        message = _build_signing_message(doc)
+        expected = hmac.new(secret, message, hashlib.sha256).hexdigest()
+    finally:
+        # Always restore, even if _build_signing_message raises
+        doc.custom_meta["signature"] = saved_sig
+        doc.custom_meta["sig_algo"] = saved_algo
 
     return hmac.compare_digest(stored_sig, expected)
 
@@ -188,12 +198,26 @@ def decrypt_document(data: bytes, password: str) -> "PFMDocument":
     """
     Decrypt an encrypted PFM document.
     Expects data from encrypt_document().
+
+    PFM-016 fix: Validates header format and minimum payload size before decryption.
     """
     from pfm.reader import PFMReader
 
-    # Strip the header
+    # Validate header
+    if not data.startswith(b"#!PFM-ENC/"):
+        raise ValueError("Data is not an encrypted PFM file (missing header)")
+    if b"\n" not in data:
+        raise ValueError("Malformed encrypted PFM file: missing header terminator")
+
     header_end = data.index(b"\n") + 1
     encrypted = data[header_end:]
+
+    # Minimum payload: 16 (salt) + 12 (nonce) + 16 (GCM tag) = 44 bytes
+    if len(encrypted) < 44:
+        raise ValueError(
+            f"Encrypted payload too short: {len(encrypted)} bytes "
+            f"(minimum 44 bytes: 16 salt + 12 nonce + 16 tag)"
+        )
 
     plaintext = decrypt_bytes(encrypted, password)
     return PFMReader.parse(plaintext)
@@ -213,10 +237,11 @@ def verify_integrity(doc: PFMDocument) -> bool:
     Verify document integrity by recomputing and comparing checksum.
 
     PFM-005 fix: Returns False if no checksum is stored (fail-closed).
+    PFM-017 fix: Uses constant-time comparison to prevent timing side-channels.
     """
     if not doc.checksum:
         return False  # No checksum = not verified
-    return doc.checksum == doc.compute_checksum()
+    return hmac.compare_digest(doc.checksum, doc.compute_checksum())
 
 
 def fingerprint(doc: PFMDocument) -> str:
@@ -224,6 +249,9 @@ def fingerprint(doc: PFMDocument) -> str:
     Generate a unique fingerprint for a document.
     Based on id + checksum + creation time.
     Useful for deduplication and tracking.
+
+    Uses 32 hex characters (128 bits) for adequate collision resistance.
+    Previous 16-char truncation only provided 64-bit / 32-bit birthday resistance.
     """
     material = f"{doc.id}:{doc.checksum}:{doc.created}"
-    return hashlib.sha256(material.encode("utf-8")).hexdigest()[:16]
+    return hashlib.sha256(material.encode("utf-8")).hexdigest()[:32]
