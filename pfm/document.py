@@ -154,7 +154,13 @@ class PFMDocument:
         return s.content if s else None
 
     def write(self, path: str) -> int:
-        """Write this document to a .pfm file. Returns bytes written."""
+        """Write this document to a .pfm file. Returns bytes written.
+
+        Raises ValueError if path contains '..' (path traversal prevention).
+        """
+        from pathlib import Path as _Path
+        if ".." in _Path(path).parts:
+            raise ValueError("Output path must not contain '..' (path traversal)")
         from pfm.writer import PFMWriter
         return PFMWriter.write(self, path)
 

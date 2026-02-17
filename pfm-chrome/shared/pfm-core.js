@@ -44,6 +44,10 @@ const PFMParser = {
           doc.formatVersion = colon !== -1 ? rest.substring(0, colon) : rest;
           doc.isStream = rest.includes(':STREAM');
         }
+        // Reject unknown format versions (matches Python reader behavior)
+        if (doc.formatVersion !== '1.0') {
+          throw new Error(`Unsupported PFM format version: '${doc.formatVersion}'`);
+        }
         continue;
       }
 

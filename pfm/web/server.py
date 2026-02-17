@@ -61,7 +61,7 @@ class _PFMHandler(BaseHTTPRequestHandler):
             f"style-src 'nonce-{self._csp_nonce}'; img-src data:;"
         )
         self.send_header("Referrer-Policy", "no-referrer")
-        self.send_header("X-XSS-Protection", "1; mode=block")
+        # X-XSS-Protection removed: deprecated, can cause issues in modern browsers
         self.end_headers()
         self.wfile.write(encoded)
 

@@ -9,9 +9,12 @@ export class PFMPreviewPanel {
   public static readonly viewType = 'pfm.preview';
   private static panels = new Map<string, PFMPreviewPanel>();
 
+  private static readonly DEBOUNCE_MS = 300;
+
   private readonly panel: vscode.WebviewPanel;
   private readonly uri: vscode.Uri;
   private disposables: vscode.Disposable[] = [];
+  private debounceTimer: ReturnType<typeof setTimeout> | undefined;
 
   private constructor(panel: vscode.WebviewPanel, uri: vscode.Uri) {
     this.panel = panel;
@@ -19,10 +22,15 @@ export class PFMPreviewPanel {
 
     this.panel.onDidDispose(() => this.dispose(), null, this.disposables);
 
-    // Update on document changes
+    // Update on document changes (debounced to avoid excessive re-renders)
     const watcher = vscode.workspace.onDidChangeTextDocument((e) => {
       if (e.document.uri.toString() === uri.toString()) {
-        this.update(e.document.getText());
+        if (this.debounceTimer) {
+          clearTimeout(this.debounceTimer);
+        }
+        this.debounceTimer = setTimeout(() => {
+          this.update(e.document.getText());
+        }, PFMPreviewPanel.DEBOUNCE_MS);
       }
     });
     this.disposables.push(watcher);
@@ -60,6 +68,9 @@ export class PFMPreviewPanel {
   }
 
   private dispose(): void {
+    if (this.debounceTimer) {
+      clearTimeout(this.debounceTimer);
+    }
     PFMPreviewPanel.panels.delete(this.uri.toString());
     this.panel.dispose();
     for (const d of this.disposables) {

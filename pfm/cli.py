@@ -7,6 +7,8 @@ Commands:
   pfm read     - Read a specific section from a .pfm file
   pfm validate - Validate a .pfm file (checksum, structure)
   pfm convert  - Convert to/from JSON, CSV, TXT, Markdown
+  pfm sign     - Sign a .pfm file with HMAC-SHA256
+  pfm verify   - Verify HMAC-SHA256 signature of a .pfm file
   pfm identify - Quick check if a file is PFM format
   pfm view     - View a .pfm file (TUI, web, or HTML export)
 """
@@ -211,6 +213,56 @@ def cmd_view(args: argparse.Namespace) -> None:
     run_viewer(path)
 
 
+def cmd_sign(args: argparse.Namespace) -> None:
+    """Sign a .pfm file with HMAC-SHA256."""
+    from pfm.reader import PFMReader
+    from pfm.security import sign
+
+    doc = PFMReader.read(args.path)
+    secret = args.secret
+    if not secret:
+        import getpass
+        secret = getpass.getpass("Secret: ")
+    if not secret:
+        print("Error: Secret cannot be empty", file=sys.stderr)
+        sys.exit(1)
+
+    sig = sign(doc, secret)
+    output = args.output or args.path
+    # Reject path traversal in output path
+    if ".." in Path(output).parts:
+        print("Error: Output path must not contain '..' (path traversal)", file=sys.stderr)
+        sys.exit(1)
+    doc.write(output)
+    print(f"Signed {output} (sig={sig[:16]}...)")
+
+
+def cmd_verify(args: argparse.Namespace) -> None:
+    """Verify the HMAC-SHA256 signature of a .pfm file."""
+    from pfm.reader import PFMReader
+    from pfm.security import verify
+
+    doc = PFMReader.read(args.path)
+    secret = args.secret
+    if not secret:
+        import getpass
+        secret = getpass.getpass("Secret: ")
+    if not secret:
+        print("Error: Secret cannot be empty", file=sys.stderr)
+        sys.exit(1)
+
+    if not doc.custom_meta.get("signature"):
+        print(f"FAIL: {args.path} has no signature")
+        sys.exit(1)
+
+    valid = verify(doc, secret)
+    if valid:
+        print(f"OK: {args.path} signature is valid")
+    else:
+        print(f"FAIL: {args.path} signature mismatch (tampered or wrong secret)")
+        sys.exit(1)
+
+
 def cmd_identify(args: argparse.Namespace) -> None:
     """Quick check if a file is PFM format."""
     from pfm.reader import PFMReader
@@ -267,6 +319,17 @@ def main() -> None:
     p_view.add_argument("--html", action="store_true", help="Generate standalone HTML file")
     p_view.add_argument("-o", "--output", help="Output path for --html mode")
 
+    # sign
+    p_sign = sub.add_parser("sign", help="Sign a .pfm file with HMAC-SHA256")
+    p_sign.add_argument("path", help="Path to .pfm file")
+    p_sign.add_argument("-s", "--secret", help="Signing secret (prompted if omitted)")
+    p_sign.add_argument("-o", "--output", help="Output path (default: overwrite input)")
+
+    # verify
+    p_verify = sub.add_parser("verify", help="Verify HMAC-SHA256 signature")
+    p_verify.add_argument("path", help="Path to .pfm file")
+    p_verify.add_argument("-s", "--secret", help="Signing secret (prompted if omitted)")
+
     # identify
     p_identify = sub.add_parser("identify", help="Quick check if a file is PFM")
     p_identify.add_argument("path", help="Path to file")
@@ -284,6 +347,8 @@ def main() -> None:
         "validate": cmd_validate,
         "convert": cmd_convert,
         "view": cmd_view,
+        "sign": cmd_sign,
+        "verify": cmd_verify,
         "identify": cmd_identify,
     }
 

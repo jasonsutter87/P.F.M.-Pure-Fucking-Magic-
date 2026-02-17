@@ -62,7 +62,7 @@ SUPPORTED_FORMAT_VERSIONS = frozenset({"1.0"})
 META_ALLOWLIST = frozenset({"id", "agent", "model", "created", "checksum", "parent", "tags", "version"})
 
 # Safety limits
-MAX_FILE_SIZE = 500 * 1024 * 1024  # 500MB max file size for reader
+MAX_FILE_SIZE = 100 * 1024 * 1024  # 100MB max file size for reader
 MAX_SECTIONS = 10_000              # Max sections per document (prevents resource exhaustion)
 MAX_META_FIELDS = 100              # Max custom meta fields
 MAX_SECTION_NAME_LENGTH = 64       # Max length for section names

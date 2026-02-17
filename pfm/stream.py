@@ -79,9 +79,11 @@ class PFMStreamWriter:
         self._checksum = hashlib.sha256()
         self._closed = False
         self._final_size: int = 0
+        self._backup_path: Path | None = None  # .bak from recovery, cleaned on close
 
         if append and self.path.exists():
             self._handle, self._sections = _recover(self.path)
+            self._backup_path = self.path.with_suffix(self.path.suffix + ".bak")
             # Recompute running checksum from existing sections
             # Must unescape content before hashing to match PFMDocument.compute_checksum()
             self._checksum = hashlib.sha256()
@@ -209,6 +211,11 @@ class PFMStreamWriter:
         self._final_size = self._handle.tell()
         self._handle.close()
         self._closed = True
+
+        # Clean up recovery backup after successful close
+        if self._backup_path and self._backup_path.exists():
+            self._backup_path.unlink()
+            self._backup_path = None
 
     def _write(self, text: str) -> None:
         self._handle.write(text.encode("utf-8"))

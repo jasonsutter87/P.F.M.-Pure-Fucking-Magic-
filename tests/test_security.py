@@ -218,7 +218,7 @@ class TestFingerprint:
         fp1 = fingerprint(doc)
         fp2 = fingerprint(doc)
         assert fp1 == fp2
-        assert len(fp1) == 32  # 32 hex chars (128-bit collision resistance)
+        assert len(fp1) == 64  # 64 hex chars (256-bit collision resistance)
 
     def test_fingerprint_different_docs(self):
         doc1 = PFMDocument.create()

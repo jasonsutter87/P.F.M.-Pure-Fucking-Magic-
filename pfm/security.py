@@ -263,4 +263,4 @@ def fingerprint(doc: PFMDocument) -> str:
     Previous 16-char truncation only provided 64-bit / 32-bit birthday resistance.
     """
     material = f"{doc.id}:{doc.checksum}:{doc.created}"
-    return hashlib.sha256(material.encode("utf-8")).hexdigest()[:32]
+    return hashlib.sha256(material.encode("utf-8")).hexdigest()
