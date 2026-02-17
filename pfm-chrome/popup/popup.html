@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="popup.css">
+<title>PFM</title>
+</head>
+<body>
+  <div class="header">
+    <span class="logo">PFM</span>
+    <span class="tagline">AI Conversation Capture</span>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <button class="tab active" id="tab-capture" data-tab="capture">Capture</button>
+    <button class="tab" id="tab-files" data-tab="files">View / Convert</button>
+  </div>
+
+  <!-- Capture Panel -->
+  <div class="panel active" id="panel-capture">
+    <p class="panel-desc">Capture the current AI conversation as a .pfm file.</p>
+    <div class="platforms">
+      <span class="platform-badge">ChatGPT</span>
+      <span class="platform-badge">Claude</span>
+      <span class="platform-badge">Gemini</span>
+    </div>
+    <button class="btn-primary" id="btn-capture">Save Conversation as .pfm</button>
+    <div class="status" id="capture-status"></div>
+  </div>
+
+  <!-- Files Panel -->
+  <div class="panel" id="panel-files">
+    <div class="drop-zone" id="drop-zone">
+      <div class="drop-icon">&#128194;</div>
+      <div class="drop-text">Drop a file here</div>
+      <div class="drop-hint">.pfm to view &bull; .json .csv .txt .md to convert</div>
+      <input type="file" id="file-input" accept=".pfm,.json,.csv,.txt,.md,.markdown">
+    </div>
+    <div class="status" id="file-status"></div>
+  </div>
+
+  <div class="footer">
+    <a href="https://github.com/jasonsutter87/P.F.M.-Pure-Fucking-Magic-" target="_blank" rel="noopener">GitHub</a>
+  </div>
+
+  <script src="../shared/pfm-core.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>
