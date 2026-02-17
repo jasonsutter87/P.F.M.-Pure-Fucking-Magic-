@@ -4,8 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; connect-src 'none'; font-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none';">
-<title>PFM Viewer -- Pure Fucking Magic</title>
-<meta name="description" content="View .pfm AI agent output files in your browser. Drag and drop, no upload, fully client-side.">
+<title>PFM Viewer &amp; Converter -- Pure Fucking Magic</title>
+<meta name="description" content="View and convert .pfm AI agent output files in your browser. Drag and drop, no upload, fully client-side.">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>&#x2728;</text></svg>">
 <style>
 /* ===== Reset & Variables ===== */
@@ -567,6 +567,120 @@ a.topbar-btn { text-decoration: none; }
 }
 ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
 
+/* ===== Mode Tabs ===== */
+.mode-tabs {
+  display: flex;
+  gap: 0;
+  margin-bottom: 28px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.mode-tab {
+  flex: 1;
+  padding: 10px 24px;
+  font-size: 14px;
+  font-weight: 600;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  transition: all var(--transition);
+  cursor: pointer;
+}
+.mode-tab:hover { color: var(--text); background: var(--bg-hover); }
+.mode-tab.active {
+  color: var(--accent);
+  background: var(--bg-active);
+  box-shadow: inset 0 -2px 0 var(--accent);
+}
+
+/* Tab Panels */
+.tab-panel { display: none; width: 100%; max-width: 520px; flex-direction: column; align-items: center; }
+.tab-panel.active { display: flex; }
+
+/* Format Cards */
+.format-cards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 20px;
+  width: 100%;
+  max-width: 520px;
+}
+.format-card {
+  padding: 12px 16px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  text-align: left;
+}
+.format-card-ext {
+  font-family: var(--mono);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--accent);
+  margin-bottom: 2px;
+}
+.format-card-desc {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* ===== Converter Result Screen ===== */
+#converter {
+  display: none;
+  height: 100%;
+  flex-direction: column;
+}
+#converter.active { display: flex; }
+
+.convert-result {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.convert-info {
+  padding: 16px 20px;
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.convert-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.convert-stat-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  color: var(--text-dim);
+  font-weight: 600;
+}
+.convert-stat-val {
+  font-size: 13px;
+  color: var(--text);
+  font-family: var(--mono);
+}
+.convert-preview {
+  flex: 1;
+  overflow: auto;
+  padding: 20px;
+}
+.convert-preview pre {
+  font-family: var(--mono);
+  font-size: 13px;
+  line-height: 1.6;
+  white-space: pre;
+  color: var(--text);
+  margin: 0;
+}
+
 /* ===== Responsive ===== */
 @media (max-width: 768px) {
   .sidebar { width: 220px; min-width: 220px; }
@@ -583,19 +697,57 @@ a.topbar-btn { text-decoration: none; }
 <!-- ========== LANDING ========== -->
 <div id="landing">
   <div class="landing-logo">&#x2728;</div>
-  <h1 class="landing-title">PFM Viewer</h1>
-  <p class="landing-subtitle">View AI agent output files in your browser. Everything runs client-side — your files never leave your machine.</p>
+  <h1 class="landing-title">PFM</h1>
+  <p class="landing-subtitle">View and convert AI agent output files in your browser. Everything runs client-side — your files never leave your machine.</p>
 
-  <div class="drop-zone" id="drop-zone">
-    <input type="file" id="file-input" accept=".pfm">
-    <div class="drop-zone-icon">&#128194;</div>
-    <div class="drop-zone-text">Drop a <strong>.pfm</strong> file here</div>
-    <div class="drop-zone-hint">or click to browse</div>
+  <!-- Mode Tabs -->
+  <div class="mode-tabs">
+    <button class="mode-tab active" id="tab-view" onclick="switchTab('view')">View .pfm</button>
+    <button class="mode-tab" id="tab-convert" onclick="switchTab('convert')">Convert to .pfm</button>
   </div>
 
-  <div class="landing-or">or</div>
+  <!-- View Mode -->
+  <div class="tab-panel active" id="panel-view">
+    <div class="drop-zone" id="drop-zone">
+      <input type="file" id="file-input" accept=".pfm">
+      <div class="drop-zone-icon">&#128194;</div>
+      <div class="drop-zone-text">Drop a <strong>.pfm</strong> file here</div>
+      <div class="drop-zone-hint">or click to browse</div>
+    </div>
 
-  <button class="demo-btn" id="demo-btn">Load Demo File</button>
+    <div class="landing-or">or</div>
+
+    <button class="demo-btn" id="demo-btn">Load Demo File</button>
+  </div>
+
+  <!-- Convert Mode -->
+  <div class="tab-panel" id="panel-convert">
+    <div class="drop-zone" id="convert-drop-zone">
+      <input type="file" id="convert-file-input" accept=".json,.csv,.txt,.md,.markdown">
+      <div class="drop-zone-icon">&#x1F504;</div>
+      <div class="drop-zone-text">Drop a file to convert to <strong>.pfm</strong></div>
+      <div class="drop-zone-hint">Supports JSON, CSV, TXT, and Markdown</div>
+    </div>
+
+    <div class="format-cards">
+      <div class="format-card">
+        <div class="format-card-ext">.json</div>
+        <div class="format-card-desc">Structured data with sections array</div>
+      </div>
+      <div class="format-card">
+        <div class="format-card-ext">.csv</div>
+        <div class="format-card-desc">section_name, content columns</div>
+      </div>
+      <div class="format-card">
+        <div class="format-card-ext">.txt</div>
+        <div class="format-card-desc">Plain text as single content section</div>
+      </div>
+      <div class="format-card">
+        <div class="format-card-ext">.md</div>
+        <div class="format-card-desc">H2 headings become sections</div>
+      </div>
+    </div>
+  </div>
 
   <!-- Install snippets -->
   <div class="install-row">
@@ -646,8 +798,10 @@ a.topbar-btn { text-decoration: none; }
     <span class="topbar-filename" id="v-filename"></span>
     <span class="topbar-spacer"></span>
     <button class="topbar-btn" id="btn-shortcuts" title="Keyboard shortcuts">&#9000; Shortcuts</button>
-    <button class="topbar-btn" id="btn-export-json">Export JSON</button>
-    <button class="topbar-btn" id="btn-export-md">Export MD</button>
+    <button class="topbar-btn" id="btn-export-json">JSON</button>
+    <button class="topbar-btn" id="btn-export-md">MD</button>
+    <button class="topbar-btn" id="btn-export-csv">CSV</button>
+    <button class="topbar-btn" id="btn-export-txt">TXT</button>
     <button class="topbar-btn" id="btn-theme">Theme</button>
     <a class="topbar-btn" href="https://github.com/jasonsutter87/P.F.M.-Pure-Fucking-Magic-" target="_blank" rel="noopener">GitHub</a>
     <button class="topbar-btn primary" id="btn-open-new">Open File</button>
@@ -693,6 +847,41 @@ a.topbar-btn { text-decoration: none; }
       <div class="content-body" id="v-content-body">
         <div class="content-empty">Select a section from the sidebar</div>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== CONVERTER RESULT ========== -->
+<div id="converter">
+  <div class="topbar">
+    <span class="topbar-brand">PFM</span>
+    <span class="topbar-filename" id="c-filename"></span>
+    <span class="topbar-spacer"></span>
+    <button class="topbar-btn" id="btn-convert-view" title="Open in viewer">View in Viewer</button>
+    <button class="topbar-btn primary" id="btn-convert-download">Download .pfm</button>
+    <button class="topbar-btn" id="btn-convert-back">Back</button>
+  </div>
+  <div class="convert-result">
+    <div class="convert-info">
+      <div class="convert-stat">
+        <span class="convert-stat-label">Source Format</span>
+        <span class="convert-stat-val" id="c-source-fmt"></span>
+      </div>
+      <div class="convert-stat">
+        <span class="convert-stat-label">Sections</span>
+        <span class="convert-stat-val" id="c-sections"></span>
+      </div>
+      <div class="convert-stat">
+        <span class="convert-stat-label">Meta Fields</span>
+        <span class="convert-stat-val" id="c-meta"></span>
+      </div>
+      <div class="convert-stat">
+        <span class="convert-stat-label">Output Size</span>
+        <span class="convert-stat-val" id="c-size"></span>
+      </div>
+    </div>
+    <div class="convert-preview">
+      <pre id="c-preview"></pre>
     </div>
   </div>
 </div>
@@ -975,11 +1164,13 @@ function loadDemo() {
    ================================================================ */
 function showViewer() {
   landing.classList.add('hidden');
+  $('converter').classList.remove('active');
   viewer.classList.add('active');
 }
 
 function showLanding() {
   viewer.classList.remove('active');
+  $('converter').classList.remove('active');
   landing.classList.remove('hidden');
 }
 
@@ -1231,14 +1422,29 @@ dropZone.addEventListener('drop', e => {
   if (file) handleFile(file);
 });
 
-// Also support drag anywhere on landing
-landing.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
-landing.addEventListener('dragleave', e => { e.preventDefault(); dropZone.classList.remove('dragover'); });
+// Also support drag anywhere on landing (routes to correct handler based on active tab)
+landing.addEventListener('dragover', e => {
+  e.preventDefault();
+  const isConvertTab = $('tab-convert').classList.contains('active');
+  (isConvertTab ? convertDropZone : dropZone).classList.add('dragover');
+});
+landing.addEventListener('dragleave', e => {
+  e.preventDefault();
+  dropZone.classList.remove('dragover');
+  convertDropZone.classList.remove('dragover');
+});
 landing.addEventListener('drop', e => {
   e.preventDefault();
   dropZone.classList.remove('dragover');
+  convertDropZone.classList.remove('dragover');
   const file = e.dataTransfer.files[0];
-  if (file) handleFile(file);
+  if (!file) return;
+  const isConvertTab = $('tab-convert').classList.contains('active');
+  if (isConvertTab) {
+    handleConvertFile(file);
+  } else {
+    handleFile(file);
+  }
 });
 
 // File input
@@ -1350,6 +1556,459 @@ function copyInstall(el, text) {
     setTimeout(() => el.classList.remove('copied'), 1500);
   });
 }
+
+
+/* ================================================================
+   Tab Switching (Landing)
+   ================================================================ */
+function switchTab(mode) {
+  document.querySelectorAll('.mode-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  $('tab-' + mode).classList.add('active');
+  $('panel-' + mode).classList.add('active');
+}
+
+
+/* ================================================================
+   PFM Serializer — builds .pfm file content from structured data
+   ================================================================ */
+const PFMSerializer = {
+  /** Escape a content line that starts with #@ or #! */
+  escapeLine(line) {
+    if (line.startsWith('#@') || line.startsWith('#!') || line.startsWith('\\#')) {
+      return '\\' + line;
+    }
+    return line;
+  },
+
+  /** Escape all lines in content */
+  escapeContent(content) {
+    return content.split('\n').map(line => this.escapeLine(line)).join('\n');
+  },
+
+  /** Generate a UUID v4 */
+  uuid() {
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+      const r = (Math.random() * 16) | 0;
+      return (c === 'x' ? r : (r & 0x3) | 0x8).toString(16);
+    });
+  },
+
+  /** Compute SHA-256 checksum of section contents */
+  async checksum(sections) {
+    const encoder = new TextEncoder();
+    let allBytes = new Uint8Array(0);
+    for (const s of sections) {
+      const encoded = encoder.encode(s.content);
+      const merged = new Uint8Array(allBytes.length + encoded.length);
+      merged.set(allBytes);
+      merged.set(encoded, allBytes.length);
+      allBytes = merged;
+    }
+    const hashBuffer = await crypto.subtle.digest('SHA-256', allBytes);
+    return Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
+  },
+
+  /** Serialize sections and meta into a .pfm string */
+  async serialize(sections, meta) {
+    meta = meta || {};
+    // Auto-fill required meta fields
+    if (!meta.id) meta.id = this.uuid();
+    if (!meta.created) meta.created = new Date().toISOString();
+    if (!meta.agent) meta.agent = 'pfm-web-converter';
+
+    // Compute checksum
+    const hash = await this.checksum(sections);
+    meta.checksum = hash;
+
+    // Build content sections first (to calculate offsets for index)
+    const sectionBlocks = [];
+    for (const s of sections) {
+      const escaped = this.escapeContent(s.content);
+      sectionBlocks.push({ name: s.name, escaped, content: s.content });
+    }
+
+    // Build the file
+    let pfm = '#!PFM/1.0\n';
+
+    // Meta block
+    pfm += '#@meta\n';
+    for (const [k, v] of Object.entries(meta)) {
+      if (k === '__proto__' || k === 'constructor' || k === 'prototype') continue;
+      pfm += k + ': ' + v + '\n';
+    }
+
+    // Index block — calculate byte offsets
+    pfm += '#@index\n';
+    // We need to know where sections start, so pre-calculate
+    let offset = new TextEncoder().encode(pfm).length;
+    // First pass: compute index lines to know their size
+    let indexLines = '';
+    let tempOffset = 0; // will recalculate after index
+    for (const sb of sectionBlocks) {
+      indexLines += sb.name + ' 0 0\n'; // placeholder
+    }
+    offset += new TextEncoder().encode(indexLines).length;
+
+    // Now calculate real offsets
+    let indexContent = '';
+    for (const sb of sectionBlocks) {
+      const header = '#@' + sb.name + '\n';
+      const body = sb.escaped + '\n';
+      const headerBytes = new TextEncoder().encode(header).length;
+      const bodyBytes = new TextEncoder().encode(body).length;
+      const sectionSize = headerBytes + bodyBytes;
+
+      indexContent += sb.name + ' ' + offset + ' ' + bodyBytes + '\n';
+      offset += sectionSize;
+    }
+
+    // Rebuild with real index
+    pfm = '#!PFM/1.0\n';
+    pfm += '#@meta\n';
+    for (const [k, v] of Object.entries(meta)) {
+      if (k === '__proto__' || k === 'constructor' || k === 'prototype') continue;
+      pfm += k + ': ' + v + '\n';
+    }
+    pfm += '#@index\n';
+    pfm += indexContent;
+
+    // Section blocks
+    for (const sb of sectionBlocks) {
+      pfm += '#@' + sb.name + '\n';
+      pfm += sb.escaped + '\n';
+    }
+
+    pfm += '#!END\n';
+    return pfm;
+  }
+};
+
+
+/* ================================================================
+   Converters — transform various formats into PFM sections + meta
+   ================================================================ */
+const Converters = {
+  /** Detect format from filename extension */
+  detectFormat(filename) {
+    const ext = filename.split('.').pop().toLowerCase();
+    if (ext === 'json') return 'json';
+    if (ext === 'csv') return 'csv';
+    if (ext === 'md' || ext === 'markdown') return 'markdown';
+    return 'txt';
+  },
+
+  /** Convert JSON to PFM sections + meta */
+  fromJSON(text, filename) {
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch (e) {
+      throw new Error('Invalid JSON: ' + e.message);
+    }
+
+    if (typeof data !== 'object' || data === null || Array.isArray(data)) {
+      throw new Error('JSON must be an object with sections array or key-value pairs');
+    }
+
+    const meta = { source_file: filename, source_format: 'json' };
+    const sections = [];
+
+    // Format 1: PFM-like structure { meta: {...}, sections: [{name, content}] }
+    if (data.sections && Array.isArray(data.sections)) {
+      if (data.meta && typeof data.meta === 'object' && !Array.isArray(data.meta)) {
+        for (const [k, v] of Object.entries(data.meta)) {
+          if (k === '__proto__' || k === 'constructor' || k === 'prototype') continue;
+          if (typeof v === 'string') meta[k] = v;
+        }
+      }
+      for (const s of data.sections) {
+        if (!s || typeof s.name !== 'string') continue;
+        const content = typeof s.content === 'string' ? s.content : JSON.stringify(s.content, null, 2);
+        sections.push({ name: s.name.substring(0, 64), content });
+      }
+    }
+    // Format 2: Flat key-value — each key becomes a section
+    else {
+      for (const [k, v] of Object.entries(data)) {
+        if (k === '__proto__' || k === 'constructor' || k === 'prototype') continue;
+        const content = typeof v === 'string' ? v : JSON.stringify(v, null, 2);
+        sections.push({ name: k.substring(0, 64), content });
+      }
+    }
+
+    if (sections.length === 0) {
+      sections.push({ name: 'content', content: JSON.stringify(data, null, 2) });
+    }
+
+    return { sections, meta };
+  },
+
+  /** Convert CSV to PFM sections + meta */
+  fromCSV(text, filename) {
+    const meta = { source_file: filename, source_format: 'csv' };
+    const sections = [];
+    const lines = text.split('\n').filter(l => l.trim());
+
+    if (lines.length === 0) {
+      throw new Error('CSV file is empty');
+    }
+
+    // Try to detect if first row is headers
+    const firstRow = this.parseCSVLine(lines[0]);
+
+    // Check for section_name/content format
+    const nameIdx = firstRow.findIndex(h => /^(section[_\s]?name|name|section)$/i.test(h.trim()));
+    const contentIdx = firstRow.findIndex(h => /^(content|body|text|value)$/i.test(h.trim()));
+
+    if (nameIdx !== -1 && contentIdx !== -1 && lines.length > 1) {
+      // Structured CSV with section name + content columns
+      for (let i = 1; i < lines.length; i++) {
+        const cols = this.parseCSVLine(lines[i]);
+        const name = (cols[nameIdx] || '').trim().substring(0, 64);
+        const content = (cols[contentIdx] || '').trim();
+        if (name) sections.push({ name, content });
+      }
+    } else {
+      // Treat entire CSV as a single data section
+      sections.push({ name: 'data', content: text });
+
+      // Also try to provide a structured view
+      if (firstRow.length > 1 && lines.length > 1) {
+        const headers = firstRow.map(h => h.trim());
+        let structured = '';
+        for (let i = 1; i < lines.length; i++) {
+          const cols = this.parseCSVLine(lines[i]);
+          structured += '--- Row ' + i + ' ---\n';
+          for (let j = 0; j < headers.length; j++) {
+            structured += headers[j] + ': ' + (cols[j] || '').trim() + '\n';
+          }
+          structured += '\n';
+        }
+        sections.push({ name: 'structured', content: structured.trim() });
+      }
+    }
+
+    meta.rows = String(lines.length - 1);
+    meta.columns = String(firstRow.length);
+    return { sections, meta };
+  },
+
+  /** Basic CSV line parser (handles quoted fields) */
+  parseCSVLine(line) {
+    const result = [];
+    let current = '';
+    let inQuotes = false;
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i];
+      if (inQuotes) {
+        if (ch === '"' && line[i + 1] === '"') {
+          current += '"';
+          i++;
+        } else if (ch === '"') {
+          inQuotes = false;
+        } else {
+          current += ch;
+        }
+      } else {
+        if (ch === '"') {
+          inQuotes = true;
+        } else if (ch === ',') {
+          result.push(current);
+          current = '';
+        } else {
+          current += ch;
+        }
+      }
+    }
+    result.push(current);
+    return result;
+  },
+
+  /** Convert plain text to PFM (single content section) */
+  fromTXT(text, filename) {
+    const meta = { source_file: filename, source_format: 'text' };
+    const sections = [{ name: 'content', content: text.trim() }];
+    return { sections, meta };
+  },
+
+  /** Convert Markdown to PFM (H2 headings become sections) */
+  fromMarkdown(text, filename) {
+    const meta = { source_file: filename, source_format: 'markdown' };
+    const sections = [];
+
+    // Extract YAML front matter if present
+    const fmMatch = text.match(/^---\n([\s\S]*?)\n---\n/);
+    let body = text;
+    if (fmMatch) {
+      body = text.substring(fmMatch[0].length);
+      const fmLines = fmMatch[1].split('\n');
+      for (const line of fmLines) {
+        const sep = line.indexOf(':');
+        if (sep !== -1) {
+          const key = line.substring(0, sep).trim();
+          const val = line.substring(sep + 1).trim();
+          if (key && val && key !== '__proto__' && key !== 'constructor' && key !== 'prototype') {
+            meta[key] = val;
+          }
+        }
+      }
+    }
+
+    // Split by ## headings
+    const parts = body.split(/^## /m);
+
+    // Content before first H2
+    const preamble = parts[0].trim();
+    if (preamble) {
+      sections.push({ name: 'content', content: preamble });
+    }
+
+    // Each H2 becomes a section
+    for (let i = 1; i < parts.length; i++) {
+      const lines = parts[i].split('\n');
+      const name = lines[0].trim().substring(0, 64);
+      const content = lines.slice(1).join('\n').trim();
+      if (name) {
+        sections.push({ name, content });
+      }
+    }
+
+    if (sections.length === 0) {
+      sections.push({ name: 'content', content: text.trim() });
+    }
+
+    return { sections, meta };
+  }
+};
+
+
+/* ================================================================
+   Converter State & Logic
+   ================================================================ */
+let convertState = {
+  pfmContent: '',
+  filename: '',
+  sourceFormat: '',
+  sections: [],
+  meta: {}
+};
+
+async function handleConvertFile(file) {
+  if (!file) return;
+  if (file.size > MAX_FILE_SIZE) {
+    alert('File too large. Maximum size is 50 MB.');
+    return;
+  }
+
+  const format = Converters.detectFormat(file.name);
+  const reader = new FileReader();
+  reader.onerror = function() { alert('Error reading file.'); };
+  reader.onload = async function(e) {
+    try {
+      const text = e.target.result;
+      let result;
+
+      switch (format) {
+        case 'json':     result = Converters.fromJSON(text, file.name); break;
+        case 'csv':      result = Converters.fromCSV(text, file.name); break;
+        case 'markdown': result = Converters.fromMarkdown(text, file.name); break;
+        default:         result = Converters.fromTXT(text, file.name); break;
+      }
+
+      const pfmContent = await PFMSerializer.serialize(result.sections, result.meta);
+
+      convertState.pfmContent = pfmContent;
+      convertState.filename = file.name.replace(/\.[^.]+$/, '.pfm');
+      convertState.sourceFormat = format.toUpperCase();
+      convertState.sections = result.sections;
+      convertState.meta = result.meta;
+
+      showConverter();
+    } catch (err) {
+      alert('Conversion error: ' + err.message);
+    }
+  };
+  reader.readAsText(file, 'utf-8');
+}
+
+function showConverter() {
+  landing.classList.add('hidden');
+  viewer.classList.remove('active');
+  $('converter').classList.add('active');
+
+  $('c-filename').textContent = convertState.filename;
+  $('c-source-fmt').textContent = convertState.sourceFormat;
+  $('c-sections').textContent = convertState.sections.length;
+  $('c-meta').textContent = Object.keys(convertState.meta).length;
+  $('c-size').textContent = formatBytes(new TextEncoder().encode(convertState.pfmContent).length);
+  $('c-preview').textContent = convertState.pfmContent;
+}
+
+function downloadConvertedPFM() {
+  download(convertState.pfmContent, convertState.filename, 'text/plain');
+}
+
+function viewConvertedInViewer() {
+  $('converter').classList.remove('active');
+  loadPFM(convertState.pfmContent, convertState.filename);
+}
+
+function backFromConverter() {
+  $('converter').classList.remove('active');
+  showLanding();
+}
+
+
+/* ================================================================
+   Additional Export Formats
+   ================================================================ */
+function exportCSV() {
+  if (!state.doc) return;
+  let csv = 'section_name,content\n';
+  for (const s of state.doc.sections) {
+    csv += '"' + s.name.replace(/"/g, '""') + '","' + s.content.replace(/"/g, '""') + '"\n';
+  }
+  download(csv, state.filename.replace('.pfm', '.csv'), 'text/csv');
+}
+
+function exportTXT() {
+  if (!state.doc) return;
+  let txt = '';
+  for (const s of state.doc.sections) {
+    txt += '=== ' + s.name + ' ===\n\n' + s.content + '\n\n';
+  }
+  download(txt.trim(), state.filename.replace('.pfm', '.txt'), 'text/plain');
+}
+
+
+/* ================================================================
+   Converter Event Listeners
+   ================================================================ */
+// Convert drop zone
+const convertDropZone = $('convert-drop-zone');
+const convertFileInput = $('convert-file-input');
+
+['dragenter', 'dragover'].forEach(evt => {
+  convertDropZone.addEventListener(evt, e => { e.preventDefault(); convertDropZone.classList.add('dragover'); });
+});
+['dragleave', 'drop'].forEach(evt => {
+  convertDropZone.addEventListener(evt, e => { e.preventDefault(); convertDropZone.classList.remove('dragover'); });
+});
+convertDropZone.addEventListener('drop', e => {
+  const file = e.dataTransfer.files[0];
+  if (file) handleConvertFile(file);
+});
+convertFileInput.addEventListener('change', e => handleConvertFile(e.target.files[0]));
+
+// Converter topbar buttons
+$('btn-convert-download').addEventListener('click', downloadConvertedPFM);
+$('btn-convert-view').addEventListener('click', viewConvertedInViewer);
+$('btn-convert-back').addEventListener('click', backFromConverter);
+
+// Additional export buttons in viewer
+$('btn-export-csv').addEventListener('click', exportCSV);
+$('btn-export-txt').addEventListener('click', exportTXT);
 
 
 /* ================================================================
