@@ -6,6 +6,8 @@
 [![npm: pfm](https://img.shields.io/badge/npm-pfm-cb3837.svg)](https://www.npmjs.com/package/pfm)
 [![Security: A+](https://img.shields.io/badge/security-A%2B-brightgreen.svg)]()
 [![Web Viewer](https://img.shields.io/badge/web-viewer%20%26%20converter-58a6ff.svg)](https://jasonsutter87.github.io/P.F.M.-Pure-Fucking-Magic-/)
+[![Chrome Extension](https://img.shields.io/badge/chrome-extension-4285F4.svg)]()
+
 
 > A universal container format for AI agent output.
 
@@ -123,6 +125,23 @@ pfm convert to md output.pfm -o output.md
 pfm convert from json data.json -o imported.pfm
 pfm convert from csv data.csv -o imported.pfm
 ```
+
+### Chrome Extension
+
+Capture AI conversations directly from your browser:
+
+```
+1. Clone the repo
+2. Open chrome://extensions → Enable Developer Mode
+3. Click "Load unpacked" → select the pfm-chrome/ folder
+4. Visit ChatGPT, Claude, or Gemini — floating "Save as .pfm" button appears
+```
+
+**Features:**
+- Captures conversations from ChatGPT, Claude, and Gemini as .pfm files
+- Popup with Capture tab (save current conversation) and View/Convert tab (drop files)
+- Full-tab .pfm viewer with sidebar, search, keyboard shortcuts, and export
+- Zero dependencies — pure browser APIs only
 
 ### Converters
 
@@ -269,6 +288,11 @@ pfm/
 │   └── src/                    # Parser, serializer, converters, checksum
 ├── pfm-vscode/                 # VS Code extension
 │   └── src/                    # Syntax, preview, outline, hover, CodeLens
+├── pfm-chrome/                 # Chrome extension (MV3)
+│   ├── content/                # AI site scrapers (ChatGPT, Claude, Gemini)
+│   ├── popup/                  # Extension popup UI
+│   ├── viewer/                 # Full-tab .pfm viewer
+│   └── shared/                 # PFM core (parser, serializer, converters)
 ├── docs/                       # GitHub Pages SPA (viewer & converter)
 ├── tests/                      # 101 Python tests
 └── examples/
