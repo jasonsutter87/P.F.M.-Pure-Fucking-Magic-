@@ -1,5 +1,12 @@
 # .pfm — Pure Fucking Magic
 
+[![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/)
+[![Tests: 101 passing](https://img.shields.io/badge/tests-101%20passing-brightgreen.svg)]()
+[![npm: pfm](https://img.shields.io/badge/npm-pfm-cb3837.svg)](https://www.npmjs.com/package/pfm)
+[![Security: A+](https://img.shields.io/badge/security-A%2B-brightgreen.svg)]()
+[![Web Viewer](https://img.shields.io/badge/web-viewer%20%26%20converter-58a6ff.svg)](https://jasonsutter87.github.io/P.F.M.-Pure-Fucking-Magic-/)
+
 > A universal container format for AI agent output.
 
 The AI ecosystem has a format problem. Agents spit out markdown, JSON, YAML, plain text, structured logs — all different, all incompatible, all missing context. `.pfm` fixes that.
@@ -224,8 +231,8 @@ In this exact order:
 ### Cons
 - **New format** — no existing ecosystem (yet)
 - **Text-based** — not as compact as binary formats for large payloads
-- **Section markers in content** — content containing `#@` or `#!PFM` on a line start is an edge case (escaping spec TBD)
-- **No streaming write** — writer needs all sections in memory to compute the index
+- **Section markers in content** — content containing `#@` or `#!` on a line start requires `\` escaping (handled automatically by the library)
+- **Streaming write** — streaming mode uses trailing index, requires post-processing for full index
 - **Young spec** — v1.0, will evolve
 
 ---
@@ -245,25 +252,30 @@ In this exact order:
 
 ```
 pfm/
-├── pyproject.toml          # Package config, CLI entry point
-├── pfm/
-│   ├── spec.py             # Format specification and constants
-│   ├── document.py         # PFMDocument in-memory model
-│   ├── writer.py           # Serializer with two-pass offset calculation
-│   ├── reader.py           # Full parser + indexed lazy reader
-│   ├── converters.py       # JSON, CSV, TXT, Markdown (both directions)
-│   ├── security.py         # HMAC signing, AES-256-GCM encryption
-│   └── cli.py              # Command-line interface
-├── tests/
-│   ├── test_unit.py        # 17 unit tests
-│   ├── test_functional.py  # 25 functional tests
-│   ├── test_e2e.py         # 15 end-to-end tests
-│   └── test_security.py    # 17 security tests
+├── pyproject.toml              # Package config, CLI entry point
+├── pfm/                        # Python library
+│   ├── spec.py                 # Format specification and constants
+│   ├── document.py             # PFMDocument in-memory model
+│   ├── writer.py               # Serializer with two-pass offset calculation
+│   ├── reader.py               # Full parser + indexed lazy reader
+│   ├── stream.py               # Streaming writer for real-time output
+│   ├── converters.py           # JSON, CSV, TXT, Markdown (both directions)
+│   ├── security.py             # HMAC signing, AES-256-GCM encryption
+│   ├── spells.py               # Shortcut factory functions
+│   ├── cli.py                  # Command-line interface
+│   ├── tui/                    # Terminal viewer (Textual)
+│   └── web/                    # Web viewer generator + local server
+├── pfm-js/                     # npm package (TypeScript)
+│   └── src/                    # Parser, serializer, converters, checksum
+├── pfm-vscode/                 # VS Code extension
+│   └── src/                    # Syntax, preview, outline, hover, CodeLens
+├── docs/                       # GitHub Pages SPA (viewer & converter)
+├── tests/                      # 101 Python tests
 └── examples/
-    └── hello.pfm           # Example file
+    └── hello.pfm               # Example file
 ```
 
-**74 tests. All passing.**
+**101 Python tests. 30 JS tests. All passing.**
 
 ---
 
