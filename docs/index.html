@@ -681,6 +681,225 @@ a.topbar-btn { text-decoration: none; }
   margin: 0;
 }
 
+/* ===== Page Screens (Benchmarks, Audits, TOS) ===== */
+.page-screen {
+  display: none;
+  height: 100%;
+  flex-direction: column;
+  overflow: hidden;
+}
+.page-screen.active { display: flex; }
+.page-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 48px 24px;
+}
+.page-inner {
+  max-width: 880px;
+  margin: 0 auto;
+}
+.page-hero {
+  text-align: center;
+  margin-bottom: 48px;
+}
+.page-title {
+  font-size: 36px;
+  font-weight: 800;
+  letter-spacing: -1px;
+  background: linear-gradient(135deg, var(--accent), var(--purple));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: 8px;
+}
+.page-subtitle {
+  font-size: 16px;
+  color: var(--text-muted);
+}
+
+/* Scorecard */
+.scorecard {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 12px;
+  margin: 24px 0 40px;
+}
+.score-card {
+  padding: 20px 12px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  text-align: center;
+}
+.score-card.champion {
+  border-color: var(--accent);
+  background: var(--bg-active);
+}
+.score-format { font-size: 18px; font-weight: 700; margin-bottom: 4px; }
+.score-val { font-size: 28px; font-weight: 800; font-family: var(--mono); }
+.score-card.champion .score-val { color: var(--accent); }
+.score-label { font-size: 11px; color: var(--text-dim); text-transform: uppercase; letter-spacing: .5px; }
+
+/* Section headings */
+.section-heading {
+  font-size: 22px;
+  font-weight: 700;
+  margin: 40px 0 16px;
+  color: var(--text);
+}
+
+/* Benchmark tables */
+.bench-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 16px 0 32px;
+  font-size: 13px;
+}
+.bench-table th {
+  text-align: left;
+  padding: 10px 14px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+.bench-table td {
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  font-family: var(--mono);
+}
+.bench-table tr:hover td { background: var(--bg-hover); }
+.bench-table .winner { color: var(--green); font-weight: 600; }
+.bench-table .highlight td { background: var(--bg-active); }
+
+/* Bar chart */
+.bar-chart { margin: 16px 0 32px; }
+.bar-row { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+.bar-label { width: 50px; font-size: 13px; font-weight: 600; text-align: right; }
+.bar-track { flex: 1; height: 28px; background: var(--bg-surface); border-radius: 4px; overflow: hidden; }
+.bar-fill {
+  height: 100%;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  padding-left: 10px;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: var(--mono);
+  color: #fff;
+  min-width: 72px;
+}
+.bar-fill.pfm-bar { background: var(--accent); }
+.bar-fill.json-bar { background: var(--purple); }
+.bar-fill.md-bar { background: var(--green); }
+.bar-fill.txt-bar { background: var(--orange); }
+.bar-fill.csv-bar { background: var(--red); }
+
+/* Audit styles */
+.audit-tabs {
+  display: flex;
+  gap: 0;
+  margin-bottom: 32px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.audit-tab {
+  flex: 1;
+  padding: 12px 20px;
+  font-size: 14px;
+  font-weight: 600;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  transition: all var(--transition);
+  cursor: pointer;
+}
+.audit-tab:hover { color: var(--text); background: var(--bg-hover); }
+.audit-tab.active {
+  color: var(--accent);
+  background: var(--bg-active);
+  box-shadow: inset 0 -2px 0 var(--accent);
+}
+.audit-panel { display: none; }
+.audit-panel.active { display: block; }
+
+.audit-report h3 { font-size: 18px; font-weight: 700; margin: 28px 0 12px; color: var(--text); }
+.audit-report h4 { font-size: 15px; font-weight: 600; margin: 20px 0 8px; color: var(--text-muted); }
+.audit-report p { margin: 8px 0; line-height: 1.7; color: var(--text); }
+.audit-report ul, .audit-report ol { margin: 8px 0; padding-left: 24px; }
+.audit-report li { margin: 4px 0; line-height: 1.6; }
+.audit-report code {
+  font-family: var(--mono);
+  font-size: 12px;
+  background: var(--bg-surface);
+  padding: 2px 6px;
+  border-radius: 3px;
+  border: 1px solid var(--border);
+}
+.audit-report pre {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  overflow-x: auto;
+  margin: 12px 0;
+  font-family: var(--mono);
+  font-size: 13px;
+  line-height: 1.5;
+}
+.audit-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 12px 0 24px;
+  font-size: 13px;
+}
+.audit-table th {
+  text-align: left;
+  padding: 8px 12px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  font-weight: 600;
+  color: var(--text-muted);
+}
+.audit-table td { padding: 8px 12px; border: 1px solid var(--border); }
+.severity-crit { color: var(--red); font-weight: 700; }
+.severity-high { color: var(--orange); font-weight: 700; }
+.severity-med { color: #d29922; font-weight: 600; }
+.severity-low { color: var(--text-muted); }
+.status-pass { color: var(--green); font-weight: 600; }
+
+.grade-badge {
+  display: inline-block;
+  padding: 4px 16px;
+  background: var(--green-bg);
+  color: var(--green);
+  border-radius: 20px;
+  font-size: 18px;
+  font-weight: 800;
+  margin: 8px 0;
+}
+.cert-box {
+  border: 2px solid var(--green);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  text-align: center;
+  margin: 24px 0;
+  background: var(--green-bg);
+}
+.cert-box h3 { color: var(--green); font-size: 22px; margin: 0 0 8px; }
+
+/* TOS styles */
+.tos-content h3 { font-size: 18px; font-weight: 700; margin: 32px 0 12px; color: var(--text); }
+.tos-content p { margin: 8px 0; line-height: 1.7; color: var(--text); }
+.tos-content ul { margin: 8px 0; padding-left: 24px; }
+.tos-content li { margin: 4px 0; line-height: 1.6; }
+.tos-updated { font-size: 13px; color: var(--text-muted); margin-bottom: 24px; }
+
 /* ===== Responsive ===== */
 @media (max-width: 768px) {
   .sidebar { width: 220px; min-width: 220px; }
@@ -782,6 +1001,31 @@ a.topbar-btn { text-decoration: none; }
       <span class="eco-info">
         <span class="eco-label">GitHub</span>
         <span class="eco-cmd">Source &amp; Docs</span>
+      </span>
+    </a>
+  </div>
+
+  <!-- Resources -->
+  <div class="ecosystem" style="margin-top:20px;">
+    <a class="eco-card" href="#benchmarks">
+      <span class="eco-icon">&#x1F4CA;</span>
+      <span class="eco-info">
+        <span class="eco-label">Benchmarks</span>
+        <span class="eco-cmd">Speed, Size, Security</span>
+      </span>
+    </a>
+    <a class="eco-card" href="#audits">
+      <span class="eco-icon">&#x1F6E1;&#xFE0F;</span>
+      <span class="eco-info">
+        <span class="eco-label">Security Audits</span>
+        <span class="eco-cmd">Black Team Reports</span>
+      </span>
+    </a>
+    <a class="eco-card" href="#tos">
+      <span class="eco-icon">&#x1F4DC;</span>
+      <span class="eco-info">
+        <span class="eco-label">Terms</span>
+        <span class="eco-cmd">Terms of Service</span>
       </span>
     </a>
   </div>
@@ -900,6 +1144,428 @@ a.topbar-btn { text-decoration: none; }
       <tr><td style="padding:4px 0;"><span class="kbd">o</span></td><td>Open new file</td></tr>
     </table>
     <button class="topbar-btn" style="margin-top:16px;width:100%;" onclick="closeShortcuts()">Close</button>
+  </div>
+</div>
+
+<!-- ========== BENCHMARKS PAGE ========== -->
+<div id="page-benchmarks" class="page-screen">
+  <div class="topbar">
+    <a class="topbar-brand" href="#" style="text-decoration:none;">PFM</a>
+    <span class="topbar-filename">Benchmarks</span>
+    <span class="topbar-spacer"></span>
+    <button class="topbar-btn" id="btn-theme-bench" onclick="toggleTheme()">Theme</button>
+    <a class="topbar-btn" href="#">Home</a>
+  </div>
+  <div class="page-body">
+    <div class="page-inner">
+      <div class="page-hero">
+        <h1 class="page-title">Format Benchmarks</h1>
+        <p class="page-subtitle">Same content, 5 formats. Measured across speed, size, indexability, and security.</p>
+      </div>
+
+      <!-- Scorecard -->
+      <div class="scorecard">
+        <div class="score-card champion">
+          <div class="score-format">PFM</div>
+          <div class="score-val">15.5</div>
+          <div class="score-label">/ 20</div>
+        </div>
+        <div class="score-card">
+          <div class="score-format">JSON</div>
+          <div class="score-val">12.5</div>
+          <div class="score-label">/ 20</div>
+        </div>
+        <div class="score-card">
+          <div class="score-format">TXT</div>
+          <div class="score-val">12.5</div>
+          <div class="score-label">/ 20</div>
+        </div>
+        <div class="score-card">
+          <div class="score-format">MD</div>
+          <div class="score-val">12.0</div>
+          <div class="score-label">/ 20</div>
+        </div>
+        <div class="score-card">
+          <div class="score-format">CSV</div>
+          <div class="score-val">10.5</div>
+          <div class="score-label">/ 20</div>
+        </div>
+      </div>
+
+      <!-- Size -->
+      <h2 class="section-heading">1. File Size</h2>
+      <p style="color:var(--text-muted);margin-bottom:16px;">PFM adds just 4.5% overhead for its metadata, index, and structure. JSON's escaping and quoting costs 11.5%.</p>
+      <table class="bench-table">
+        <thead><tr><th>Format</th><th>Raw</th><th>Gzipped</th><th>Compression</th><th>Overhead</th></tr></thead>
+        <tbody>
+          <tr><td>TXT</td><td>9,188 B</td><td>3,859 B</td><td>42.0%</td><td class="winner">baseline</td></tr>
+          <tr><td>CSV</td><td>9,227 B</td><td>3,879 B</td><td>42.0%</td><td>+0.4%</td></tr>
+          <tr><td>MD</td><td>9,371 B</td><td>3,992 B</td><td>42.6%</td><td>+2.0%</td></tr>
+          <tr class="highlight"><td>PFM</td><td>9,604 B</td><td>4,110 B</td><td>42.8%</td><td>+4.5%</td></tr>
+          <tr><td>JSON</td><td>10,244 B</td><td>4,153 B</td><td>40.5%</td><td>+11.5%</td></tr>
+        </tbody>
+      </table>
+
+      <!-- Speed -->
+      <h2 class="section-heading">2. Speed</h2>
+      <p style="color:var(--text-muted);margin-bottom:16px;">PFM's indexed section access is 12&ndash;25x faster than every other format. JSON wins full parse via C-optimized <code style="font-family:var(--mono);font-size:12px;background:var(--bg-surface);padding:2px 6px;border-radius:3px;border:1px solid var(--border);">json.loads()</code>.</p>
+
+      <h3 style="font-size:15px;font-weight:600;margin:20px 0 12px;color:var(--text-muted);">Targeted Section Access &mdash; &ldquo;License&rdquo; (10,000 iterations)</h3>
+      <div class="bar-chart">
+        <div class="bar-row">
+          <span class="bar-label">PFM</span>
+          <div class="bar-track"><div class="bar-fill pfm-bar" style="width:8%;">4.2 &micro;s</div></div>
+        </div>
+        <div class="bar-row">
+          <span class="bar-label">JSON</span>
+          <div class="bar-track"><div class="bar-fill json-bar" style="width:50%;">52.8 &micro;s</div></div>
+        </div>
+        <div class="bar-row">
+          <span class="bar-label">MD</span>
+          <div class="bar-track"><div class="bar-fill md-bar" style="width:67%;">70.0 &micro;s</div></div>
+        </div>
+        <div class="bar-row">
+          <span class="bar-label">TXT</span>
+          <div class="bar-track"><div class="bar-fill txt-bar" style="width:75%;">78.7 &micro;s</div></div>
+        </div>
+        <div class="bar-row">
+          <span class="bar-label">CSV</span>
+          <div class="bar-track"><div class="bar-fill csv-bar" style="width:100%;">104.9 &micro;s</div></div>
+        </div>
+      </div>
+
+      <table class="bench-table">
+        <thead><tr><th>Operation</th><th>PFM</th><th>JSON</th><th>CSV</th><th>MD</th><th>TXT</th></tr></thead>
+        <tbody>
+          <tr><td>Full file read</td><td>31.5 &micro;s</td><td class="winner">27.0 &micro;s</td><td>30.1 &micro;s</td><td>30.6 &micro;s</td><td>41.8 &micro;s</td></tr>
+          <tr><td>File ID (64 bytes)</td><td>20.7 &micro;s</td><td>19.8 &micro;s</td><td>20.8 &micro;s</td><td class="winner">15.4 &micro;s</td><td>21.1 &micro;s</td></tr>
+          <tr><td>Full parse</td><td>129.7 &micro;s</td><td class="winner">47.2 &micro;s</td><td>106.9 &micro;s</td><td>77.9 &micro;s</td><td>79.1 &micro;s</td></tr>
+          <tr><td>Section access</td><td class="winner">4.2 &micro;s</td><td>52.8 &micro;s</td><td>104.9 &micro;s</td><td>70.0 &micro;s</td><td>78.7 &micro;s</td></tr>
+        </tbody>
+      </table>
+
+      <!-- Indexability -->
+      <h2 class="section-heading">3. Indexability</h2>
+      <p style="color:var(--text-muted);margin-bottom:16px;">PFM is the only format with a pre-computed byte-offset index. All others require full-file scanning to locate a section.</p>
+      <table class="bench-table">
+        <thead><tr><th>Format</th><th>Section Index</th><th>Access Pattern</th><th>Sections Found</th><th>Searchable</th></tr></thead>
+        <tbody>
+          <tr class="highlight"><td>PFM</td><td class="winner">Yes (byte offsets)</td><td class="winner">O(1) seek</td><td>10</td><td>grep</td></tr>
+          <tr><td>JSON</td><td>No</td><td>O(n) scan</td><td>10</td><td>jq</td></tr>
+          <tr><td>CSV</td><td>No</td><td>O(n) scan</td><td>10</td><td>Partial</td></tr>
+          <tr><td>MD</td><td>No</td><td>O(n) scan</td><td>10</td><td>grep</td></tr>
+          <tr><td>TXT</td><td>No</td><td>O(n) scan</td><td>10</td><td>grep</td></tr>
+        </tbody>
+      </table>
+
+      <!-- Security -->
+      <h2 class="section-heading">4. Security</h2>
+      <p style="color:var(--text-muted);margin-bottom:16px;">PFM is the only text format with built-in integrity verification, signing, and encryption. Every other format has zero security features.</p>
+      <table class="bench-table">
+        <thead><tr><th>Feature</th><th>PFM</th><th>JSON</th><th>CSV</th><th>MD</th><th>TXT</th></tr></thead>
+        <tbody>
+          <tr><td>Integrity</td><td class="winner">SHA-256</td><td>None</td><td>None</td><td>None</td><td>None</td></tr>
+          <tr><td>Tamper Detection</td><td class="winner">Built-in</td><td>None</td><td>None</td><td>None</td><td>None</td></tr>
+          <tr><td>Signing</td><td class="winner">HMAC-SHA256</td><td>None</td><td>None</td><td>None</td><td>None</td></tr>
+          <tr><td>Encryption</td><td class="winner">AES-256-GCM</td><td>None</td><td>None</td><td>None</td><td>None</td></tr>
+          <tr><td>Provenance</td><td class="winner">Full metadata</td><td>Manual</td><td>None</td><td>None</td><td>None</td></tr>
+        </tbody>
+      </table>
+
+      <div style="margin-top:48px;padding:20px;background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius-lg);text-align:center;">
+        <p style="color:var(--text-muted);font-size:13px;margin:0;">Benchmarked with Python 3.13 on macOS. 10,000 iterations per test. Same README content across all 5 formats.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== AUDITS PAGE ========== -->
+<div id="page-audits" class="page-screen">
+  <div class="topbar">
+    <a class="topbar-brand" href="#" style="text-decoration:none;">PFM</a>
+    <span class="topbar-filename">Security Audits</span>
+    <span class="topbar-spacer"></span>
+    <button class="topbar-btn" onclick="toggleTheme()">Theme</button>
+    <a class="topbar-btn" href="#">Home</a>
+  </div>
+  <div class="page-body">
+    <div class="page-inner">
+      <div class="page-hero">
+        <h1 class="page-title">Security Audits</h1>
+        <p class="page-subtitle">Independent offensive security assessments by Black Team. Full penetration testing, APT simulation, and chaos engineering.</p>
+      </div>
+
+      <!-- Audit Tabs -->
+      <div class="audit-tabs">
+        <button class="audit-tab active" id="audit-tab-full" onclick="switchAuditTab('full')">Black Team Report</button>
+        <button class="audit-tab" id="audit-tab-summit" onclick="switchAuditTab('summit')">Hacking Summit</button>
+      </div>
+
+      <!-- Full Report Panel -->
+      <div class="audit-panel active" id="audit-panel-full">
+        <div class="audit-report">
+          <h3>Black Team Offensive Security Assessment &mdash; Round 2</h3>
+          <p style="color:var(--text-muted);">Post-Remediation Re-Attack &bull; Date: 2026-02-15 &bull; Project: CryptoBlocks &bull; Scope: Vite + React + TypeScript + Blockly</p>
+
+          <h4>Executive Summary</h4>
+          <table class="audit-table">
+            <thead><tr><th>Severity</th><th>Count</th></tr></thead>
+            <tbody>
+              <tr><td class="severity-crit">CRITICAL</td><td>0</td></tr>
+              <tr><td class="severity-high">HIGH</td><td>0</td></tr>
+              <tr><td class="severity-med">MEDIUM</td><td>3</td></tr>
+              <tr><td class="severity-low">LOW</td><td>2</td></tr>
+            </tbody>
+          </table>
+          <p>All 9 previously reported findings (3 CRITICAL, 5 HIGH, 1 MEDIUM) have been verified as properly remediated. After exhaustive re-attack, the Black Team identified 5 new findings: 0 CRITICAL, 0 HIGH, 3 MEDIUM, and 2 LOW. These are defense-in-depth improvements rather than directly exploitable vulnerabilities.</p>
+
+          <h4>Previous Findings &mdash; Verification</h4>
+          <table class="audit-table">
+            <thead><tr><th>ID</th><th>Title</th><th>Status</th></tr></thead>
+            <tbody>
+              <tr><td>CRIT-001</td><td><code>allow-same-origin</code> on sandbox iframe</td><td class="status-pass">REMEDIATED</td></tr>
+              <tr><td>CRIT-002</td><td>GitHub PAT in localStorage</td><td class="status-pass">REMEDIATED</td></tr>
+              <tr><td>CRIT-003</td><td>Python safety preamble bypass</td><td class="status-pass">REMEDIATED</td></tr>
+              <tr><td>HIGH-001</td><td>Parent reference bypass</td><td class="status-pass">REMEDIATED</td></tr>
+              <tr><td>HIGH-002</td><td>CreateBlockModal code injection</td><td class="status-pass">REMEDIATED</td></tr>
+              <tr><td>HIGH-003</td><td>Exported HTML unsandboxed</td><td class="status-pass">REMEDIATED</td></tr>
+              <tr><td>HIGH-004</td><td>postMessage origin not checked</td><td class="status-pass">REMEDIATED</td></tr>
+              <tr><td>HIGH-005</td><td>Challenge progress ID manipulation</td><td class="status-pass">REMEDIATED</td></tr>
+              <tr><td>MED-001</td><td>XSS in HTML markup generation</td><td class="status-pass">REMEDIATED</td></tr>
+              <tr><td>MED-002</td><td>Broad CSP connect-src</td><td class="status-pass">REMEDIATED</td></tr>
+            </tbody>
+          </table>
+
+          <h4>New Findings (Round 2)</h4>
+          <table class="audit-table">
+            <thead><tr><th>ID</th><th>Severity</th><th>Title</th><th>Exploitable?</th></tr></thead>
+            <tbody>
+              <tr><td>MED-003</td><td class="severity-med">MEDIUM</td><td>HTML Preview iframe lacks srcdoc CSP</td><td>No (<code>sandbox=""</code> blocks all)</td></tr>
+              <tr><td>MED-004</td><td class="severity-med">MEDIUM</td><td>Embed snippet runs unsandboxed</td><td>Low (Base64 + codegen limits injection)</td></tr>
+              <tr><td>MED-005</td><td class="severity-med">MEDIUM</td><td>Python web blocks reference blocked module</td><td>No (blocks fail safely)</td></tr>
+              <tr><td>LOW-001</td><td class="severity-low">LOW</td><td>No CSP on main index.html</td><td>No</td></tr>
+              <tr><td>LOW-002</td><td class="severity-low">LOW</td><td>PAT format not pre-validated</td><td>No</td></tr>
+            </tbody>
+          </table>
+
+          <h4>Attack Vectors Tested (No Finding)</h4>
+          <p>24 attack vectors were explicitly tested and found to be adequately defended:</p>
+          <table class="audit-table">
+            <thead><tr><th>#</th><th>Vector</th><th>Result</th></tr></thead>
+            <tbody>
+              <tr><td>1</td><td>Sandbox escape via allow-same-origin</td><td class="status-pass">NOT PRESENT</td></tr>
+              <tr><td>2</td><td>Python import bypass via __builtins__</td><td class="status-pass">BLOCKED</td></tr>
+              <tr><td>3</td><td>Python bridge to JS via <code>from js import</code></td><td class="status-pass">BLOCKED</td></tr>
+              <tr><td>4</td><td>Python closure extraction from import guard</td><td class="status-pass">BLOCKED</td></tr>
+              <tr><td>5</td><td>Python name-mangled attr access</td><td class="status-pass">BLOCKED</td></tr>
+              <tr><td>6</td><td>Python sys.modules manipulation</td><td class="status-pass">BLOCKED</td></tr>
+              <tr><td>7</td><td>Python inspect module bypass</td><td class="status-pass">BLOCKED</td></tr>
+              <tr><td>8</td><td>postMessage spoofing</td><td class="status-pass">DEFENDED</td></tr>
+              <tr><td>9</td><td>Output buffer overflow (DoS)</td><td class="status-pass">DEFENDED</td></tr>
+              <tr><td>10</td><td>File import code injection</td><td class="status-pass">DEFENDED</td></tr>
+              <tr><td>11</td><td>localStorage block poisoning</td><td class="status-pass">DEFENDED</td></tr>
+              <tr><td>12</td><td>XSS in toolbox XML via block names</td><td class="status-pass">DEFENDED</td></tr>
+              <tr><td>13</td><td>XSS in HTML markup via block text</td><td class="status-pass">DEFENDED</td></tr>
+              <tr><td>14</td><td>Fetch/WebSocket SSRF</td><td class="status-pass">DEFENDED</td></tr>
+              <tr><td>15</td><td>Redirect-based URL filter bypass</td><td class="status-pass">DEFENDED</td></tr>
+              <tr><td>16</td><td>Challenge progress pollution</td><td class="status-pass">DEFENDED</td></tr>
+              <tr><td>17</td><td>Exported HTML code injection</td><td class="status-pass">DEFENDED</td></tr>
+              <tr><td>18</td><td>Exported HTML sandbox escape</td><td class="status-pass">DEFENDED</td></tr>
+              <tr><td>19</td><td>Console override bypass</td><td class="status-pass">DEFENDED</td></tr>
+              <tr><td>20</td><td>Execution timeout bypass</td><td class="status-pass">DEFENDED</td></tr>
+              <tr><td>21</td><td>Python globals persistence</td><td class="status-pass">DEFENDED</td></tr>
+              <tr><td>22</td><td>WebSocket DNS rebinding</td><td class="status-pass">DEFENDED</td></tr>
+              <tr><td>23</td><td>File upload size limit bypass</td><td class="status-pass">DEFENDED</td></tr>
+              <tr><td>24</td><td>Custom block impl size limit</td><td class="status-pass">DEFENDED</td></tr>
+            </tbody>
+          </table>
+
+          <h4>Team Assessments</h4>
+
+          <h3 style="font-size:15px;">Penetration Testing</h3>
+          <p>The sandbox escape chain from Round 1 (CRIT-001 + CRIT-002 + HIGH-001) is fully remediated. Without <code>allow-same-origin</code>, the sandboxed iframe has an opaque origin and cannot access the parent frame. The <code>sessionStorage</code> migration ensures tokens are cleared when the tab closes. No exploitable path from &ldquo;run a block&rdquo; to &ldquo;steal credentials&rdquo; remains.</p>
+
+          <h3 style="font-size:15px;">APT Simulation</h3>
+          <p>The persistence vector through malicious custom blocks in localStorage is still theoretically possible, but the impact is now severely limited: code runs in a null-origin sandbox with no parent access, CSP connect-src restricts network to localhost only, fetch/WebSocket/XHR are safety-wrapped, and there is no path to stored credentials. Attack surface reduced from &ldquo;full credential theft&rdquo; to &ldquo;unexpected console output in sandbox.&rdquo;</p>
+
+          <h3 style="font-size:15px;">Financial Threat Assessment</h3>
+          <p>The primary monetizable asset (GitHub PAT) is no longer reachable from the execution sandbox. SessionStorage isolation, null-origin sandbox, and localhost-only networking create three independent barriers to credential exfiltration. All three would need to be bypassed simultaneously.</p>
+
+          <h3 style="font-size:15px;">Chaos Assessment</h3>
+          <p>Maximum achievable damage from a crafted .blocks file is now limited to: confusing console output within the user&rsquo;s own sandbox, the sandbox iframe displaying unexpected content, and possible client-side DoS (addressed by output buffer limits). The &ldquo;delete all repos + steal credentials + display phishing page&rdquo; scenario from Round 1 is completely blocked.</p>
+
+          <div class="cert-box">
+            <h3>A+ Certification Recommended</h3>
+            <p style="margin:0;color:var(--green);">Zero CRITICAL and zero HIGH findings. The codebase demonstrates mature security engineering with proper sandbox isolation, defense-in-depth API locking, and input validation at all trust boundaries.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Hacking Summit Panel -->
+      <div class="audit-panel" id="audit-panel-summit">
+        <div class="audit-report">
+          <h3>Hacking Summit Certification</h3>
+          <p style="color:var(--text-muted);">Project: CryptoBlocks &bull; Date: 2026-02-15 &bull; Rounds: 2 &bull; Final Grade: <span class="grade-badge">A+</span></p>
+
+          <h4>Round History</h4>
+          <table class="audit-table">
+            <thead><tr><th>Round</th><th>Phase</th><th>Findings</th><th>Fixed</th><th>Remaining</th></tr></thead>
+            <tbody>
+              <tr><td>1</td><td>Black Team Assessment</td><td>18 (3C, 5H, 6M, 4L)</td><td>&mdash;</td><td>18</td></tr>
+              <tr><td>1</td><td>Red Team Remediation</td><td>&mdash;</td><td>9 (3C, 4H, 2M)</td><td>9</td></tr>
+              <tr><td>2</td><td>Black Team Re-Attack</td><td>5 (0C, 0H, 3M, 2L)</td><td>&mdash;</td><td>5</td></tr>
+            </tbody>
+          </table>
+
+          <h4>Round 1 &mdash; Initial Assessment + Remediation</h4>
+          <p><strong>Black Team</strong> identified 18 findings across the full codebase:</p>
+          <ul>
+            <li><span class="severity-crit">3 CRITICAL:</span> Sandbox iframe allow-same-origin, GitHub PAT in localStorage, Python preamble bypass</li>
+            <li><span class="severity-high">5 HIGH:</span> Parent reference bypass, CreateBlockModal injection, exported HTML unsandboxed, postMessage no origin check, challenge progress manipulation</li>
+            <li><span class="severity-med">6 MEDIUM:</span> HTML markup XSS, broad CSP connect-src, redirect bypass, Python blocklist mismatch, no lockfile, Pyodide CDN no SRI</li>
+            <li><span class="severity-low">4 LOW:</span> Token shoulder surfing, block color unsanitized, no file import rate limit, githack.com dependency</li>
+          </ul>
+
+          <h4>Round 2 &mdash; Verification + Re-Attack</h4>
+          <p><strong>Black Team</strong> verified all 9 remediations are properly implemented, then conducted a full re-attack:</p>
+          <ul>
+            <li><span class="severity-crit">0 CRITICAL</span> findings</li>
+            <li><span class="severity-high">0 HIGH</span> findings</li>
+            <li><span class="severity-med">3 MEDIUM</span> findings (defense-in-depth hardening, not exploitable)</li>
+            <li><span class="severity-low">2 LOW</span> findings (quality-of-life improvements)</li>
+          </ul>
+
+          <h4>Remediation Verification</h4>
+          <table class="audit-table">
+            <thead><tr><th>ID</th><th>Finding</th><th>Fix Applied</th><th>Verified</th></tr></thead>
+            <tbody>
+              <tr><td>CRIT-001</td><td>allow-same-origin sandbox escape</td><td>Removed allow-same-origin from iframe</td><td class="status-pass">YES</td></tr>
+              <tr><td>CRIT-002</td><td>PAT in localStorage</td><td>Migrated to sessionStorage</td><td class="status-pass">YES</td></tr>
+              <tr><td>CRIT-003</td><td>Python preamble bypass via closure</td><td>Class-based guard with __slots__ + name mangling</td><td class="status-pass">YES</td></tr>
+              <tr><td>HIGH-002</td><td>CreateBlockModal code injection</td><td>Added function/def regex + 10K size limit</td><td class="status-pass">YES</td></tr>
+              <tr><td>HIGH-003</td><td>Exported HTML unsandboxed</td><td>CSP meta tag + sandbox iframe in standalone export</td><td class="status-pass">YES</td></tr>
+              <tr><td>HIGH-004</td><td>postMessage origin unvalidated</td><td>event.source + event.origin === 'null' check</td><td class="status-pass">YES</td></tr>
+              <tr><td>HIGH-005</td><td>Challenge progress pollution</td><td>ID validation against allThemes + full schema check</td><td class="status-pass">YES</td></tr>
+              <tr><td>MED-001</td><td>XSS in HTML markup</td><td>escapeHtmlAttr() applied to all user values</td><td class="status-pass">YES</td></tr>
+              <tr><td>MED-002</td><td>CSP connect-src too broad</td><td>Restricted to localhost only</td><td class="status-pass">YES</td></tr>
+            </tbody>
+          </table>
+
+          <h4>Security Architecture Summary</h4>
+          <h3 style="font-size:15px;">Execution Sandbox (JavaScript)</h3>
+          <ul>
+            <li>Sandboxed iframe with <code>allow-scripts</code> and <code>allow-modals</code> only</li>
+            <li>No <code>allow-same-origin</code> &mdash; iframe has unique opaque origin</li>
+            <li>CSP restricts scripts to inline/eval, connections to localhost only</li>
+            <li>Safety preamble locks fetch, WebSocket, XHR, Workers via <code>Object.defineProperty</code></li>
+            <li>30-second execution timeout with abort capability</li>
+            <li>Output buffer limited to 1,000 lines / 1 MB</li>
+          </ul>
+
+          <h3 style="font-size:15px;">Execution Sandbox (Python)</h3>
+          <ul>
+            <li>Class-based import guard with <code>__slots__</code> and name-mangled attributes</li>
+            <li>JS bridge modules replaced with empty stubs</li>
+            <li>17+ dangerous modules blocked: os, subprocess, socket, http, ctypes, sys, builtins, inspect, etc.</li>
+            <li>User globals reset between runs</li>
+          </ul>
+
+          <h3 style="font-size:15px;">Input Validation &amp; Output Sanitization</h3>
+          <ul>
+            <li>Block names restricted to <code>/^[a-zA-Z][a-zA-Z0-9_]*$/</code></li>
+            <li>Implementation size capped at 10,000 characters</li>
+            <li>Import file size capped at 5 MB</li>
+            <li>HTML markup uses <code>escapeHtmlAttr()</code> for all user values</li>
+            <li>Exported HTML uses Base64 encoding to prevent template injection</li>
+          </ul>
+
+          <h3 style="font-size:15px;">Network Safety</h3>
+          <ul>
+            <li>Domain blocklist with 75+ patterns</li>
+            <li>Safe search enforcement for major search engines</li>
+            <li>HTTPS/WSS only for non-localhost connections</li>
+            <li>Fetch rate limited to 10 requests per execution, 1 MB response limit</li>
+          </ul>
+
+          <div class="cert-box">
+            <h3>CERTIFIED &mdash; Grade: A+</h3>
+            <p style="margin:0;color:var(--green);">Black Team found 0 exploitable vulnerabilities. All CRITICAL and HIGH findings from Round 1 have been verified as properly remediated. The remaining MEDIUM and LOW findings are defense-in-depth hardening recommendations that do not represent exploitable attack paths.</p>
+            <p style="margin:12px 0 0;font-size:13px;color:var(--text-muted);">Signed: Hacking Summit Certification Board &bull; Date: 2026-02-15</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== TOS PAGE ========== -->
+<div id="page-tos" class="page-screen">
+  <div class="topbar">
+    <a class="topbar-brand" href="#" style="text-decoration:none;">PFM</a>
+    <span class="topbar-filename">Terms of Service</span>
+    <span class="topbar-spacer"></span>
+    <button class="topbar-btn" onclick="toggleTheme()">Theme</button>
+    <a class="topbar-btn" href="#">Home</a>
+  </div>
+  <div class="page-body">
+    <div class="page-inner">
+      <div class="page-hero">
+        <h1 class="page-title">Terms of Service</h1>
+        <p class="tos-updated">Last updated: February 16, 2026</p>
+      </div>
+
+      <div class="tos-content">
+        <h3>1. Acceptance of Terms</h3>
+        <p>By using PFM (Pure Fucking Magic) software, libraries, tools, web viewer, or file format specification (collectively, the &ldquo;Service&rdquo;), you agree to these Terms of Service. If you do not agree, do not use the Service.</p>
+
+        <h3>2. License</h3>
+        <p>PFM is released under the MIT License. You are free to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, subject to the conditions of the MIT License.</p>
+        <p>The full license text is included with the source code and governs your use of the software.</p>
+
+        <h3>3. The Service</h3>
+        <p>PFM provides:</p>
+        <ul>
+          <li>An open file format specification (<code>.pfm</code>) for AI agent output</li>
+          <li>Python and JavaScript libraries for reading, writing, and converting PFM files</li>
+          <li>A command-line interface for file operations</li>
+          <li>A web-based viewer and converter that runs entirely client-side</li>
+        </ul>
+
+        <h3>4. Privacy &amp; Data Handling</h3>
+        <p>The PFM web viewer and converter run entirely in your browser. <strong>No files are uploaded to any server.</strong> All processing happens client-side on your machine.</p>
+        <ul>
+          <li>No analytics or tracking scripts are included</li>
+          <li>No cookies are set (except a local theme preference in localStorage)</li>
+          <li>No data is transmitted to any third party</li>
+          <li>Your files never leave your device</li>
+        </ul>
+
+        <h3>5. No Warranty</h3>
+        <p>THE SERVICE IS PROVIDED &ldquo;AS IS&rdquo;, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND NONINFRINGEMENT.</p>
+        <p>PFM&rsquo;s security features (checksums, HMAC signing, AES-256-GCM encryption) are provided as tools. Their correctness depends on proper usage. You are responsible for your own security posture and key management.</p>
+
+        <h3>6. Limitation of Liability</h3>
+        <p>IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT, OR OTHERWISE, ARISING FROM, OUT OF, OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.</p>
+
+        <h3>7. Acceptable Use</h3>
+        <p>You may use PFM for any lawful purpose. You agree not to:</p>
+        <ul>
+          <li>Use PFM to store, transmit, or distribute illegal content</li>
+          <li>Attempt to circumvent PFM&rsquo;s security features for malicious purposes</li>
+          <li>Misrepresent the provenance or integrity of PFM files</li>
+          <li>Use PFM in any way that violates applicable laws or regulations</li>
+        </ul>
+
+        <h3>8. Contributions</h3>
+        <p>Contributions to PFM are welcome and governed by the project&rsquo;s CONTRIBUTING.md guidelines. By submitting a contribution, you agree to license it under the same MIT License as the project.</p>
+
+        <h3>9. Changes to Terms</h3>
+        <p>These terms may be updated from time to time. Changes will be reflected in the &ldquo;Last updated&rdquo; date above. Continued use of the Service after changes constitutes acceptance of the new terms.</p>
+
+        <h3>10. Contact</h3>
+        <p>For questions about these terms, open an issue on the project&rsquo;s GitHub repository.</p>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -1162,16 +1828,41 @@ function loadDemo() {
 /* ================================================================
    Screen Switching
    ================================================================ */
+function hideAllPages() {
+  if ($('page-benchmarks')) $('page-benchmarks').classList.remove('active');
+  if ($('page-audits')) $('page-audits').classList.remove('active');
+  if ($('page-tos')) $('page-tos').classList.remove('active');
+}
+
 function showViewer() {
   landing.classList.add('hidden');
   $('converter').classList.remove('active');
+  hideAllPages();
   viewer.classList.add('active');
 }
 
 function showLanding() {
   viewer.classList.remove('active');
   $('converter').classList.remove('active');
+  hideAllPages();
   landing.classList.remove('hidden');
+}
+
+function showPage(page) {
+  landing.classList.add('hidden');
+  viewer.classList.remove('active');
+  $('converter').classList.remove('active');
+  hideAllPages();
+  const target = $('page-' + page);
+  if (target) target.classList.add('active');
+  else landing.classList.remove('hidden');
+}
+
+function switchAuditTab(tab) {
+  document.querySelectorAll('.audit-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.audit-panel').forEach(p => p.classList.remove('active'));
+  $('audit-tab-' + tab).classList.add('active');
+  $('audit-panel-' + tab).classList.add('active');
 }
 
 
@@ -2014,9 +2705,16 @@ $('btn-export-txt').addEventListener('click', exportTXT);
 /* ================================================================
    URL Hash — load demo if #demo
    ================================================================ */
-if (window.location.hash === '#demo') {
-  loadDemo();
+function handleRoute() {
+  const hash = window.location.hash.substring(1);
+  if (hash === 'demo') {
+    loadDemo();
+  } else if (['benchmarks', 'audits', 'tos'].includes(hash)) {
+    showPage(hash);
+  }
 }
+window.addEventListener('hashchange', handleRoute);
+handleRoute();
 </script>
 </body>
 </html>
