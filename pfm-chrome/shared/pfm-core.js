@@ -116,7 +116,17 @@ const PFMParser = {
   },
 
   unescape(line) {
-    return line.startsWith('\\#') ? line.substring(1) : line;
+    if (line.startsWith('\\') && this._hasMarkerAfterBackslashes(line.substring(1))) {
+      return line.substring(1);
+    }
+    return line;
+  },
+
+  _hasMarkerAfterBackslashes(line) {
+    let i = 0;
+    while (i < line.length && line[i] === '\\') i++;
+    const rest = line.substring(i);
+    return rest.startsWith('#@') || rest.startsWith('#!PFM') || rest.startsWith('#!END');
   },
 
   async checksum(sections) {
@@ -139,12 +149,19 @@ const PFMParser = {
    PFM Serializer — builds .pfm file content from structured data
    ================================================================ */
 const PFMSerializer = {
-  /** Escape a content line that starts with #@ or #! */
+  /** Escape a content line that starts with a PFM marker prefix */
   escapeLine(line) {
-    if (line.startsWith('#@') || line.startsWith('#!') || line.startsWith('\\#')) {
+    if (this._hasMarkerAfterBackslashes(line)) {
       return '\\' + line;
     }
     return line;
+  },
+
+  _hasMarkerAfterBackslashes(line) {
+    let i = 0;
+    while (i < line.length && line[i] === '\\') i++;
+    const rest = line.substring(i);
+    return rest.startsWith('#@') || rest.startsWith('#!PFM') || rest.startsWith('#!END');
   },
 
   /** Escape all lines in content */

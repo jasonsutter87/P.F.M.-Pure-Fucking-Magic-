@@ -140,22 +140,27 @@ function buildIndex(
 }
 
 /**
+ * Check if a line starts with zero or more backslashes followed by a PFM marker.
+ * Used by both escape and unescape to handle arbitrary nesting depth.
+ */
+function hasMarkerAfterBackslashes(line: string): boolean {
+  let i = 0;
+  while (i < line.length && line[i] === '\\') i++;
+  const rest = line.substring(i);
+  return rest.startsWith('#@') || rest.startsWith('#!PFM') || rest.startsWith('#!END');
+}
+
+/**
  * Escape content lines that could be confused with PFM markers.
  *
- * Matches the Python spec.escape_content_line() logic exactly:
- *   - Lines starting with #@ (section prefix)
- *   - Lines starting with \# (already-escaped prefix, must double-escape)
- *   - Lines starting with #!PFM (magic marker)
- *   - Lines starting with #!END (EOF marker)
+ * Matches the Python spec.escape_content_line() logic exactly.
+ * Handles arbitrary backslash nesting: \#@, \\#@, etc.
  */
 function escapeContent(content: string): string {
   return content
     .split('\n')
     .map((line) => {
-      if (line.startsWith('#@') || line.startsWith('\\#')) {
-        return '\\' + line;
-      }
-      if (line.startsWith('#!PFM') || line.startsWith('#!END')) {
+      if (hasMarkerAfterBackslashes(line)) {
         return '\\' + line;
       }
       return line;

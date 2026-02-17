@@ -184,9 +184,17 @@ export function getSections(doc: PFMDocument, name: string): string[] {
   return doc.sections.filter((s) => s.name === name).map((s) => s.content);
 }
 
+/** Check if line has a PFM marker after any leading backslashes. */
+function hasMarkerAfterBackslashes(line: string): boolean {
+  let i = 0;
+  while (i < line.length && line[i] === '\\') i++;
+  const rest = line.substring(i);
+  return rest.startsWith('#@') || rest.startsWith('#!PFM') || rest.startsWith('#!END');
+}
+
 /** Unescape a single content line (reverses writer escaping). */
 function unescapeLine(line: string): string {
-  if (line.startsWith('\\#')) {
+  if (line.startsWith('\\') && hasMarkerAfterBackslashes(line.substring(1))) {
     return line.substring(1);
   }
   return line;

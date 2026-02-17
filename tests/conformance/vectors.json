@@ -1,0 +1,91 @@
+{
+  "_comment": "PFM cross-implementation conformance test vectors. Both Python and JS implementations MUST pass all of these.",
+
+  "escape_roundtrip": {
+    "_comment": "escape(input) -> escaped, unescape(escaped) == input",
+    "cases": [
+      {"input": "#@section",       "escaped": "\\#@section",       "desc": "Section header"},
+      {"input": "#!PFM/1.0",       "escaped": "\\#!PFM/1.0",       "desc": "Magic line"},
+      {"input": "#!END",            "escaped": "\\#!END",            "desc": "EOF marker"},
+      {"input": "normal line",      "escaped": "normal line",        "desc": "Normal content"},
+      {"input": "#hello",           "escaped": "#hello",             "desc": "Hash but not marker"},
+      {"input": "#!other",          "escaped": "#!other",            "desc": "Hash-bang but not PFM/END"},
+      {"input": "\\#@something",    "escaped": "\\\\#@something",    "desc": "Backslash before section marker"},
+      {"input": "\\#!PFM",          "escaped": "\\\\#!PFM",          "desc": "Backslash before magic"},
+      {"input": "\\#!END",          "escaped": "\\\\#!END",          "desc": "Backslash before EOF"},
+      {"input": "\\\\#@nested",     "escaped": "\\\\\\#@nested",     "desc": "Double backslash before marker"},
+      {"input": "\\#hello",         "escaped": "\\#hello",           "desc": "Backslash-hash no marker (passthrough)"},
+      {"input": "\\#!other",        "escaped": "\\#!other",          "desc": "Backslash-hash-bang no marker (passthrough)"}
+    ]
+  },
+
+  "parse_serialize_roundtrip": {
+    "_comment": "Serialize then parse — sections must be identical",
+    "cases": [
+      {
+        "desc": "Basic document",
+        "meta": {"agent": "test-agent", "model": "test-model"},
+        "sections": [
+          {"name": "content", "content": "Hello world"},
+          {"name": "chain", "content": "User: hi\nAgent: hello"}
+        ]
+      },
+      {
+        "desc": "Content with PFM markers",
+        "meta": {"agent": "test"},
+        "sections": [
+          {"name": "content", "content": "Line before\n#@fake-section\n#!PFM/1.0\n#!END\nLine after"}
+        ]
+      },
+      {
+        "desc": "Content with backslash-hash sequences",
+        "meta": {"agent": "test"},
+        "sections": [
+          {"name": "content", "content": "Has \\#@marker and \\#!PFM in content"}
+        ]
+      },
+      {
+        "desc": "Empty section content",
+        "meta": {"agent": "test"},
+        "sections": [
+          {"name": "content", "content": ""},
+          {"name": "chain", "content": "data"}
+        ]
+      },
+      {
+        "desc": "Unicode content",
+        "meta": {"agent": "test"},
+        "sections": [
+          {"name": "content", "content": "Hello 世界 🌍 مرحبا"}
+        ]
+      },
+      {
+        "desc": "Multiple sections same name",
+        "meta": {"agent": "test"},
+        "sections": [
+          {"name": "content", "content": "First"},
+          {"name": "content", "content": "Second"}
+        ]
+      }
+    ]
+  },
+
+  "checksum": {
+    "_comment": "SHA-256 of concatenated raw section content bytes",
+    "cases": [
+      {
+        "desc": "Single section",
+        "sections": [{"name": "content", "content": "hello"}],
+        "expected_checksum": "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824"
+      },
+      {
+        "desc": "Two sections concatenated",
+        "sections": [
+          {"name": "content", "content": "hello"},
+          {"name": "chain", "content": "world"}
+        ],
+        "expected_checksum": "936a185caaa266bb9cbe981e9e05cb78cd732b0b3280eb944412bb6f8f8f07af"
+      }
+    ]
+  }
+}

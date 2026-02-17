@@ -3,9 +3,9 @@ PFM Reader - Fast parser for .pfm files.
 
 Speed features:
   - Magic byte check in first 64 bytes (instant file identification)
-  - Index-based O(1) section access (seek directly to any section by byte offset)
-  - Lazy loading: only reads sections when requested
-  - Streaming: can parse from file handle without loading entire file into memory
+  - Index-based O(1) section access via file seek (true lazy reading)
+  - Only the header (magic + meta + index) is read on open
+  - Section content is read on demand — never loads the full file into memory
 
 Security features:
   - Content unescaping (reverses writer escaping of #@/#! markers)
@@ -61,15 +61,10 @@ class PFMReader:
     Fast .pfm file reader.
 
     Usage:
-        # Full parse
+        # Full parse (loads entire file)
         doc = PFMReader.read("file.pfm")
 
-        # Indexed access (lazy - only reads what you need)
-        reader = PFMReader.open("file.pfm")
-        content = reader.get_section("content")
-        reader.close()
-
-        # Context manager
+        # Indexed access (lazy — only reads header on open, seeks for sections)
         with PFMReader.open("file.pfm") as reader:
             content = reader.get_section("content")
     """
@@ -208,7 +203,12 @@ class PFMReader:
 
     @classmethod
     def open(cls, path: str | Path, max_size: int = MAX_FILE_SIZE) -> PFMReaderHandle:
-        """Open a .pfm file for indexed, lazy reading."""
+        """Open a .pfm file for indexed, lazy reading.
+
+        Only reads the header (magic + meta + index) on open.
+        Section content is read on demand via file seek — the full file
+        is never loaded into memory.
+        """
         path = Path(path)
         file_size = path.stat().st_size
         if file_size > max_size:
@@ -217,9 +217,7 @@ class PFMReader:
                 f"Pass max_size= to override."
             )
         f = builtins_open(path, "rb")
-        raw = f.read()
-        f.seek(0)
-        reader = PFMReaderHandle(f, raw)
+        reader = PFMReaderHandle(f, file_size)
         reader._parse_header()
         return reader
 
@@ -231,31 +229,35 @@ builtins_open = builtins.open
 
 class PFMReaderHandle:
     """
-    Handle for indexed access to a .pfm file.
-    Uses the index for O(1) section jumps - only reads what you need.
+    Handle for indexed, lazy access to a .pfm file.
+
+    Only the header (magic, meta, index) is parsed on open.
+    Section content is read on demand via file seek — O(1) per section,
+    with no upfront cost proportional to file size.
     """
 
-    def __init__(self, handle: BinaryIO, raw: bytes) -> None:
+    def __init__(self, handle: BinaryIO, file_size: int) -> None:
         self._handle = handle
-        self._raw = raw
+        self._file_size = file_size
         self.meta: dict[str, str] = {}
         self.index: PFMIndex = PFMIndex()
         self.format_version: str = ""
 
     def _parse_header(self) -> None:
-        """Parse magic, meta, and index sections.
+        """Parse only magic, meta, and index by reading line-by-line.
 
+        Stops as soon as the first content section header is encountered.
         Handles both inline index (standard) and trailing index (stream mode).
-        For stream files, scans from the EOF marker backward to find the index.
         """
-        text = self._raw.decode("utf-8")
-        lines = text.split("\n")
+        self._handle.seek(0)
+        current_section: str | None = None
         is_stream = False
 
-        current_section: str | None = None
-        i = 0
-        while i < len(lines):
-            line = lines[i]
+        while True:
+            line_bytes = self._handle.readline()
+            if not line_bytes:
+                break
+            line = line_bytes.decode("utf-8").rstrip("\n").rstrip("\r")
 
             if line.startswith(MAGIC):
                 version_part = line.split("/", 1)[1] if "/" in line else "1.0"
@@ -267,16 +269,14 @@ class PFMReaderHandle:
                     )
                 self.format_version = parsed_version
                 is_stream = ":STREAM" in line
-                i += 1
                 continue
 
             if line.startswith(SECTION_PREFIX):
                 section_name = line[len(SECTION_PREFIX):]
                 current_section = section_name
-                # Stop after inline index - don't scan content sections
+                # Stop at the first content section — header is fully parsed
                 if current_section not in ("meta", "index", "index:trailing"):
                     break
-                i += 1
                 continue
 
             if current_section == "meta" and ": " in line:
@@ -290,17 +290,24 @@ class PFMReaderHandle:
                     off = int(offset)
                     ln = int(length)
                     # PFM-008: Validate index bounds
-                    if 0 <= off and off + ln <= len(self._raw):
+                    if 0 <= off and off + ln <= self._file_size:
                         self.index.add(name, off, ln)
-
-            i += 1
 
         # If stream mode and no index found yet, scan from the end
         if is_stream and not self.index.entries:
-            self._parse_trailing_index(lines)
+            self._parse_trailing_index()
 
-    def _parse_trailing_index(self, lines: list[str]) -> None:
-        """Parse trailing index from the end of a stream-mode file."""
+    def _parse_trailing_index(self) -> None:
+        """Parse trailing index from the end of a stream-mode file.
+
+        Reads backward from EOF to find the index:trailing section.
+        """
+        # Read the tail of the file (trailing index is typically < 4KB)
+        tail_size = min(self._file_size, 64 * 1024)
+        self._handle.seek(self._file_size - tail_size)
+        tail = self._handle.read(tail_size).decode("utf-8")
+        lines = tail.split("\n")
+
         for line in reversed(lines):
             if line.startswith(EOF_MARKER):
                 continue
@@ -313,28 +320,42 @@ class PFMReaderHandle:
                 try:
                     name, offset, length = parts[0], int(parts[1]), int(parts[2])
                     # PFM-008: Validate bounds
-                    if 0 <= offset and offset + length <= len(self._raw):
+                    if 0 <= offset and offset + length <= self._file_size:
                         self.index.add(name, offset, length)
                 except ValueError:
                     continue
             elif len(parts) == 2 and parts[0] == "checksum":
                 self.meta["checksum"] = parts[1]
 
+    def _read_raw(self, offset: int, length: int) -> bytes:
+        """Seek to offset and read exactly length bytes."""
+        self._handle.seek(offset)
+        return self._handle.read(length)
+
     def get_section(self, name: str) -> str | None:
-        """O(1) indexed access to a section's content. Seeks directly by byte offset."""
+        """O(1) indexed access to a section's content.
+
+        Seeks directly to the byte offset in the file and reads only the
+        requested section — no other data is loaded.
+        """
         entry = self.index.get(name)
         if entry is None:
             return None
         offset, length = entry
-        raw = self._raw[offset:offset + length].decode("utf-8")
-        # Unescape content
+        raw = self._read_raw(offset, length).decode("utf-8")
+        # Strip trailing newline that writer adds for format correctness
+        if raw.endswith("\n"):
+            raw = raw[:-1]
         return unescape_content(raw)
 
     def get_sections(self, name: str) -> list[str]:
         """Get all sections with the given name."""
         results = []
         for offset, length in self.index.get_all(name):
-            raw = self._raw[offset:offset + length].decode("utf-8")
+            raw = self._read_raw(offset, length).decode("utf-8")
+            # Strip trailing newline that writer adds for format correctness
+            if raw.endswith("\n"):
+                raw = raw[:-1]
             results.append(unescape_content(raw))
         return results
 
@@ -343,13 +364,16 @@ class PFMReaderHandle:
         return self.index.section_names
 
     def to_document(self) -> PFMDocument:
-        """Convert to full PFMDocument (reads all sections)."""
-        return PFMReader.parse(self._raw)
+        """Convert to full PFMDocument (reads all sections from disk)."""
+        self._handle.seek(0)
+        data = self._handle.read()
+        return PFMReader.parse(data)
 
     def validate_checksum(self) -> bool:
         """Validate the checksum in meta against actual content.
 
         PFM-005 fix: Returns False if no checksum is present (fail-closed).
+        Reads each section via seek — does not load the full file.
         """
         expected = self.meta.get("checksum", "")
         if not expected:
@@ -360,7 +384,7 @@ class PFMReaderHandle:
         h = hashlib.sha256()
         for name in self.index.section_names:
             for offset, length in self.index.get_all(name):
-                chunk = self._raw[offset:offset + length]
+                chunk = self._read_raw(offset, length)
                 # Strip the trailing newline that the writer appends
                 if chunk.endswith(b"\n"):
                     chunk = chunk[:-1]

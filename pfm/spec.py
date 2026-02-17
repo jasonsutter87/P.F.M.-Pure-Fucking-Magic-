@@ -94,16 +94,37 @@ EXTENSION = ".pfm"
 MAX_MAGIC_SCAN_BYTES = 64
 
 
+def _has_marker_after_backslashes(line: str) -> bool:
+    """Check if line starts with zero or more backslashes followed by a PFM marker.
+
+    Returns True for lines the parser would misinterpret or the unescaper
+    would incorrectly strip, at any backslash nesting depth.
+    """
+    i = 0
+    while i < len(line) and line[i] == "\\":
+        i += 1
+    rest = line[i:]
+    return rest.startswith(SECTION_PREFIX) or rest.startswith(MAGIC) or rest.startswith(EOF_MARKER)
+
+
 def escape_content_line(line: str) -> str:
-    """Escape a content line that starts with a PFM marker prefix."""
-    if line.startswith(SECTION_PREFIX) or line.startswith("\\#") or (line.startswith("#!") and (line.startswith(MAGIC) or line.startswith(EOF_MARKER))):
+    """Escape a content line that starts with a PFM marker prefix.
+
+    Handles arbitrary backslash nesting: \\#@, \\\\#@, etc. are all escaped
+    so that unescape is a perfect inverse at every depth.
+    """
+    if _has_marker_after_backslashes(line):
         return "\\" + line
     return line
 
 
 def unescape_content_line(line: str) -> str:
-    """Unescape a previously escaped content line."""
-    if line.startswith("\\#"):
+    """Unescape a previously escaped content line.
+
+    Strips one leading backslash if the remainder (after stripping) still
+    matches the escape predicate — i.e., it starts with [\\]*#[@!].
+    """
+    if line.startswith("\\") and _has_marker_after_backslashes(line[1:]):
         return line[1:]
     return line
 
