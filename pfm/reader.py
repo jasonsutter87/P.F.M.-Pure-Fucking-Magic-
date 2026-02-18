@@ -145,9 +145,6 @@ class PFMReader:
                 skip_sections = ("meta", "index", "index-trailing")
                 if current_section and current_section not in skip_sections:
                     content = "\n".join(section_lines)
-                    # Strip trailing newline that writer adds
-                    if content.endswith("\n"):
-                        content = content[:-1]
                     # Unescape content lines
                     content = unescape_content(content)
                     doc.add_section(current_section, content)
@@ -196,8 +193,6 @@ class PFMReader:
         # Flush last section
         if current_section and current_section not in ("meta", "index", "index-trailing"):
             content = "\n".join(section_lines)
-            if content.endswith("\n"):
-                content = content[:-1]
             content = unescape_content(content)
             doc.add_section(current_section, content)
 
@@ -210,6 +205,10 @@ class PFMReader:
         Only reads the header (magic + meta + index) on open.
         Section content is read on demand via file seek — the full file
         is never loaded into memory.
+
+        CRLF safety: If the file contains ``\\r\\n`` line endings (e.g. from
+        Git autocrlf on Windows), the reader transparently normalizes the
+        data to LF-only so that index byte offsets remain correct.
         """
         path = Path(path)
         file_size = path.stat().st_size
@@ -218,7 +217,25 @@ class PFMReader:
                 f"File size {file_size} exceeds maximum {max_size} bytes. "
                 f"Pass max_size= to override."
             )
+
         f = builtins_open(path, "rb")
+        # Detect CRLF: peek at first 4 KB to check for \r\n
+        head = f.read(min(file_size, 4096))
+        has_crlf = b"\r\n" in head
+
+        if has_crlf:
+            # Normalize entire file to LF in memory so index offsets work
+            f.seek(0)
+            raw = f.read()
+            f.close()
+            normalized = raw.replace(b"\r\n", b"\n")
+            import io as _io
+            f = _io.BytesIO(normalized)
+            file_size = len(normalized)
+
+        else:
+            f.seek(0)
+
         reader = PFMReaderHandle(f, file_size)
         reader._parse_header()
         return reader

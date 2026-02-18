@@ -1,0 +1,11 @@
+# PFM files use byte-offset indexes — CRLF conversion destroys them.
+# Always store and checkout as-is (binary/LF-only).
+*.pfm binary
+
+# Keep Python/JS source files with LF for cross-platform consistency
+*.py text eol=lf
+*.js text eol=lf
+*.ts text eol=lf
+*.json text eol=lf
+*.html text eol=lf
+*.css text eol=lf

@@ -136,35 +136,44 @@ def from_csv(csv_str: str) -> PFMDocument:
     """Create PFM document from CSV string.
 
     Validates row types and enforces field count limits.
+    Raises csv.field_size_limit for large fields (e.g., entire books
+    stored as section content). We temporarily increase the limit to
+    match PFM's MAX_FILE_SIZE.
     """
-    from pfm.spec import MAX_META_FIELDS
+    from pfm.spec import MAX_META_FIELDS, MAX_FILE_SIZE
 
-    reader = csv.reader(io.StringIO(csv_str))
-    header = next(reader, None)  # Skip header row
+    # Increase field size limit for large PFM content sections
+    old_limit = csv.field_size_limit()
+    csv.field_size_limit(MAX_FILE_SIZE)
+    try:
+        reader = csv.reader(io.StringIO(csv_str))
+        header = next(reader, None)  # Skip header row
 
-    doc = PFMDocument()
+        doc = PFMDocument()
 
-    for row in reader:
-        if len(row) < 3:
-            continue
-        row_type, key, value = row[0], row[1], row[2]
+        for row in reader:
+            if len(row) < 3:
+                continue
+            row_type, key, value = row[0], row[1], row[2]
 
-        # Validate types are strings
-        if not isinstance(key, str) or not isinstance(value, str):
-            continue
+            # Validate types are strings
+            if not isinstance(key, str) or not isinstance(value, str):
+                continue
 
-        if row_type == "meta":
-            if key in META_ALLOWLIST:
-                setattr(doc, key, value)
-            else:
-                # Enforce custom meta field count limit
-                if len(doc.custom_meta) >= MAX_META_FIELDS:
-                    continue
-                doc.custom_meta[key] = value
-        elif row_type == "section":
-            doc.add_section(key, value)
+            if row_type == "meta":
+                if key in META_ALLOWLIST:
+                    setattr(doc, key, value)
+                else:
+                    # Enforce custom meta field count limit
+                    if len(doc.custom_meta) >= MAX_META_FIELDS:
+                        continue
+                    doc.custom_meta[key] = value
+            elif row_type == "section":
+                doc.add_section(key, value)
 
-    return doc
+        return doc
+    finally:
+        csv.field_size_limit(old_limit)
 
 
 # =============================================================================

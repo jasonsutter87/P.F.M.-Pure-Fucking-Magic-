@@ -34,9 +34,12 @@ class PFMWriter:
             # Escape content lines that look like PFM markers
             escaped = escape_content(section.content)
             content_bytes = escaped.encode("utf-8")
-            # Ensure content ends with newline
-            if not content_bytes.endswith(b"\n"):
-                content_bytes += b"\n"
+            # ALWAYS append exactly one newline as a format separator.
+            # The reader ALWAYS strips exactly one trailing newline.
+            # This preserves content that naturally ends with \n:
+            #   "hello"   -> on disk "hello\n"   -> reader strips -> "hello"
+            #   "hello\n" -> on disk "hello\n\n" -> reader strips -> "hello\n"
+            content_bytes += b"\n"
             section_blobs.append((section.name, header_line + content_bytes))
 
         # --- Build header (magic + meta) ---
@@ -65,59 +68,37 @@ class PFMWriter:
         # We need to know the total size of header + index to calculate section offsets.
         # Index entries are: "name offset length\n"
         # Problem: offset depends on index size, index size depends on offset digits.
-        # Solution: Calculate with estimated offsets, then recalculate if digit count changes.
+        # Solution: Iteratively build the index, feeding the previous iteration's
+        # index size forward until the size stabilises (digit counts converge).
 
         header_bytes = header.getvalue()
 
-        # First estimate: calculate index entries with placeholder offsets
-        for _attempt in range(3):  # Max 3 iterations (converges fast)
+        # Pre-compute per-section sizes (invariant across iterations)
+        entry_info: list[tuple[str, int, int]] = []  # (name, content_len, blob_len)
+        for name, blob in section_blobs:
+            section_header_len = len(f"{SECTION_PREFIX}{name}\n".encode("utf-8"))
+            content_len = len(blob) - section_header_len
+            entry_info.append((name, content_len, len(blob)))
+
+        # Seed: start with just the index header (minimum possible index)
+        prev_index_bytes = index_header
+
+        for _attempt in range(5):  # Converges in 2-3 iterations
+            base_offset = len(header_bytes) + len(prev_index_bytes)
             index_buf = io.BytesIO()
             index_buf.write(index_header)
-
-            # Current position after header + index
-            # We need to figure out index size first
-            estimated_entries = []
-            cursor = 0  # Will be set after we know index size
-            for name, blob in section_blobs:
-                content_start = len(f"{SECTION_PREFIX}{name}\n".encode("utf-8"))
-                content_len = len(blob) - content_start
-                estimated_entries.append((name, cursor, content_len, len(blob)))
-                cursor += len(blob)
-
-            # Build index string to measure it
-            test_index = io.BytesIO()
-            test_index.write(index_header)
-            base_offset = len(header_bytes) + 0  # placeholder
             running = base_offset
-            for name, _, content_len, blob_len in estimated_entries:
-                # Offset points to content start (after section header line)
+            for name, content_len, blob_len in entry_info:
                 section_header_len = len(f"{SECTION_PREFIX}{name}\n".encode("utf-8"))
                 content_offset = running + section_header_len
-                test_index.write(f"{name} {content_offset} {content_len}\n".encode("utf-8"))
-                running += blob_len
-
-            test_index_bytes = test_index.getvalue()
-            actual_base = len(header_bytes) + len(test_index_bytes)
-
-            # Recalculate with actual base
-            index_buf = io.BytesIO()
-            index_buf.write(index_header)
-            running = actual_base
-            final_entries = []
-            for name, _, content_len, blob_len in estimated_entries:
-                section_header_len = len(f"{SECTION_PREFIX}{name}\n".encode("utf-8"))
-                content_offset = running + section_header_len
-                entry_line = f"{name} {content_offset} {content_len}\n"
-                index_buf.write(entry_line.encode("utf-8"))
-                final_entries.append((name, content_offset, content_len))
+                index_buf.write(f"{name} {content_offset} {content_len}\n".encode("utf-8"))
                 running += blob_len
 
             index_bytes = index_buf.getvalue()
 
-            # Check if our size estimate was right
-            if len(index_bytes) == len(test_index_bytes):
-                break  # Converged
-            # Otherwise loop with corrected sizes
+            if len(index_bytes) == len(prev_index_bytes):
+                break  # Converged — digit counts are stable
+            prev_index_bytes = index_bytes
 
         # --- Assemble final output ---
         out = io.BytesIO()

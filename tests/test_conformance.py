@@ -35,7 +35,7 @@ VECTORS_PATH = Path(__file__).parent / "conformance" / "vectors.json"
 
 @pytest.fixture(scope="module")
 def vectors():
-    with open(VECTORS_PATH) as f:
+    with open(VECTORS_PATH, encoding="utf-8") as f:
         return json.load(f)
 
 
@@ -364,22 +364,22 @@ class TestAdversarial:
             assert restored.sections[i].content == f"content-{i}"
 
     def test_content_only_newlines(self):
-        """Content that is only newlines — trailing newline consumed by writer/reader protocol."""
+        """Content that is only newlines — preserved exactly through round-trip."""
         doc = PFMDocument.create(agent="test")
         doc.add_section("content", "\n\n\n")
 
         data = PFMWriter.serialize(doc)
         restored = PFMReader.parse(data)
-        # Writer ensures trailing \n, reader strips one — net loss of one trailing newline
-        assert restored.sections[0].content == "\n"
+        # Writer always adds one \n separator; reader does not strip content newlines.
+        assert restored.sections[0].content == "\n\n\n"
 
     def test_content_with_trailing_newline(self):
-        """Trailing newline consumed by writer/reader protocol."""
+        """Trailing newline preserved through round-trip."""
         doc = PFMDocument.create(agent="test")
         doc.add_section("content", "hello\n")
 
         data = PFMWriter.serialize(doc)
         restored = PFMReader.parse(data)
-        # Writer sees content already ends with \n (no extra added),
-        # reader strips trailing \n → original trailing newline is consumed
-        assert restored.sections[0].content == "hello"
+        # Writer always appends one \n as format separator; content's own
+        # trailing newline is preserved through the round-trip.
+        assert restored.sections[0].content == "hello\n"
