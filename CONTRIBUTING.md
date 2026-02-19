@@ -4,8 +4,8 @@ Thanks for your interest in PFM. Here's how you can help.
 
 ## Quick Links
 
-- [GitHub Issues](https://github.com/jasonsutter87/P.F.M.-Pure-Fucking-Magic-/issues)
-- [Web Viewer & Converter](https://jasonsutter87.github.io/P.F.M.-Pure-Fucking-Magic-/)
+- [GitHub Issues](https://github.com/jasonsutter87/P.F.M./issues)
+- [Web Viewer & Converter](https://jasonsutter87.github.io/P.F.M./)
 - [Python Package (PyPI)](https://pypi.org/project/pfm/)
 - [npm Package](https://www.npmjs.com/package/pfm)
 
@@ -54,8 +54,8 @@ The .pfm format spec is v1.0 and evolving. Open a discussion issue if you think 
 ### Python
 
 ```bash
-git clone https://github.com/jasonsutter87/P.F.M.-Pure-Fucking-Magic-.git
-cd P.F.M.-Pure-Fucking-Magic-
+git clone https://github.com/jasonsutter87/P.F.M..git
+cd P.F.M.
 python -m venv .venv
 source .venv/bin/activate
 pip install -e ".[dev]"
