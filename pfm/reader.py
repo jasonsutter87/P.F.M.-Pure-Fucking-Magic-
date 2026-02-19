@@ -105,8 +105,13 @@ class PFMReader:
         return cls.parse(data)
 
     @classmethod
-    def parse(cls, data: bytes) -> PFMDocument:
+    def parse(cls, data: bytes, max_size: int = MAX_FILE_SIZE) -> PFMDocument:
         """Parse bytes into a PFMDocument."""
+        if len(data) > max_size:
+            raise ValueError(
+                f"Input size {len(data)} exceeds maximum {max_size} bytes. "
+                f"Pass max_size= to override."
+            )
         text = data.decode("utf-8")
         # Normalize CRLF/CR to LF to handle Windows line endings
         text = text.replace("\r\n", "\n").replace("\r", "\n")
@@ -117,6 +122,7 @@ class PFMReader:
         section_lines: list[str] = []
         in_meta = False
         in_index = False
+        hit_eof = False
 
         i = 0
         while i < len(lines):
@@ -137,6 +143,7 @@ class PFMReader:
 
             # EOF marker (only match unescaped)
             if line.startswith(EOF_MARKER):
+                hit_eof = True
                 break
 
             # Section header (only match unescaped — escaped lines start with \#)
@@ -165,8 +172,9 @@ class PFMReader:
                     val = val.strip()
                     if key in META_ALLOWLIST:
                         # First-wins: prevent duplicate meta key override
+                        # Use explicit dict-style access to avoid setattr risks
                         if not getattr(doc, key, ""):
-                            setattr(doc, key, val)
+                            doc.__dict__[key] = val
                     else:
                         # First-wins: only set if key not already present
                         if key not in doc.custom_meta:
@@ -193,6 +201,13 @@ class PFMReader:
         # Flush last section
         if current_section and current_section not in ("meta", "index", "index-trailing"):
             content = "\n".join(section_lines)
+            # Strip trailing newline only for unfinalized stream files (no EOF marker).
+            # The writer adds \n after content for format correctness. In finalized
+            # files, the EOF marker stops accumulation before this padding, so
+            # content trailing newlines are preserved. In unfinalized files (crash
+            # recovery), the padding \n leaks into the last section's content.
+            if not hit_eof and content.endswith("\n"):
+                content = content[:-1]
             content = unescape_content(content)
             doc.add_section(current_section, content)
 

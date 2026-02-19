@@ -60,12 +60,20 @@ export function fromJSON(json: string): PFMDocument {
 
   // Validate and sanitize sections
   const rawSections = Array.isArray(data.sections) ? data.sections : [];
+  const VALID_NAME = /^[a-z0-9_-]+$/;
+  const RESERVED_NAMES = new Set(['meta', 'index', 'index-trailing']);
   const safeSections = rawSections
     .filter((s: unknown): s is { name: string; content: string } =>
       s !== null &&
       typeof s === 'object' &&
       typeof (s as Record<string, unknown>).name === 'string' &&
       typeof (s as Record<string, unknown>).content === 'string'
+    )
+    .filter((s: { name: string }) =>
+      s.name.length > 0 &&
+      s.name.length <= 64 &&
+      VALID_NAME.test(s.name) &&
+      !RESERVED_NAMES.has(s.name)
     )
     .map((s: { name: string; content: string }) => ({
       name: String(s.name),
@@ -114,9 +122,10 @@ export function toMarkdown(doc: PFMDocument): string {
     parts.push('');
   }
 
-  // Sections
+  // Sections (sanitize names to prevent injection via markdown headings)
   for (const section of doc.sections) {
-    parts.push(`## ${section.name}`);
+    const safeName = section.name.replace(/[^a-z0-9_-]/g, '_');
+    parts.push(`## ${safeName}`);
     parts.push('');
     parts.push(section.content);
     parts.push('');

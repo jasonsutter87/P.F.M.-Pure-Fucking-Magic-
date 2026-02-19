@@ -86,8 +86,11 @@ class PFMStreamWriter:
             self._backup_path = self.path.with_suffix(self.path.suffix + ".bak")
             # Recompute running checksum from existing sections
             # Must unescape content before hashing to match PFMDocument.compute_checksum()
+            # Read from the already-open handle (avoids PermissionError on Windows
+            # where the recovery lock prevents a second file open)
             self._checksum = hashlib.sha256()
-            raw = self.path.read_bytes()
+            self._handle.seek(0)
+            raw = self._handle.read()
             for name, offset, length in self._sections:
                 if 0 <= offset and offset + length <= len(raw):
                     chunk = raw[offset:offset + length]
@@ -236,10 +239,18 @@ class PFMStreamWriter:
 
 
 def _lock_file(handle) -> None:
-    """Acquire an exclusive non-blocking file lock (cross-platform)."""
+    """Acquire an exclusive non-blocking file lock (cross-platform).
+
+    On Windows, locks the full file range (not just 1 byte) to prevent
+    concurrent modification. On Unix, uses flock for whole-file locking.
+    """
     if platform.system() == "Windows":
         import msvcrt
-        msvcrt.locking(handle.fileno(), msvcrt.LK_NBLCK, 1)
+        # Lock the full file range, not just 1 byte
+        handle.seek(0, 2)  # Seek to end to get file size
+        file_size = handle.tell()
+        handle.seek(0)
+        msvcrt.locking(handle.fileno(), msvcrt.LK_NBLCK, max(file_size, 1))
     else:
         import fcntl
         fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
@@ -253,6 +264,13 @@ def _recover(path: Path) -> tuple:
 
     PFM-004 fix: Creates backup before truncation, uses rfind for marker search.
     """
+    # Check file size before opening to prevent OOM on huge files
+    file_size = path.stat().st_size
+    if file_size > MAX_FILE_SIZE:
+        raise ValueError(
+            f"File size {file_size} exceeds maximum {MAX_FILE_SIZE} bytes"
+        )
+
     # Open file and acquire lock BEFORE reading to prevent TOCTOU
     handle = open(path, "r+b")
     try:

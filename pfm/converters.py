@@ -99,12 +99,15 @@ def from_json(json_str: str) -> PFMDocument:
 # =============================================================================
 
 def _escape_csv_formula(value: str) -> str:
-    """Escape CSV formula injection characters (=, +, -, @, tab, CR).
+    """Escape CSV formula injection characters (=, +, -, @, tab, CR, ;).
 
-    Prefixes dangerous first characters with a single quote to prevent
-    spreadsheet applications from interpreting cell content as formulas.
+    Checks the first non-whitespace character to prevent spreadsheet
+    applications from interpreting cell content as formulas.
+    Per OWASP: also handles semicolons (formula initiator in some locales)
+    and leading whitespace before dangerous characters.
     """
-    if value and value[0] in ("=", "+", "-", "@", "\t", "\r"):
+    stripped = value.lstrip()
+    if stripped and stripped[0] in ("=", "+", "-", "@", "\t", "\r", ";"):
         return "'" + value
     return value
 
@@ -162,7 +165,7 @@ def from_csv(csv_str: str) -> PFMDocument:
 
             if row_type == "meta":
                 if key in META_ALLOWLIST:
-                    setattr(doc, key, value)
+                    doc.__dict__[key] = value
                 else:
                     # Enforce custom meta field count limit
                     if len(doc.custom_meta) >= MAX_META_FIELDS:
@@ -273,7 +276,7 @@ def from_markdown(md_str: str) -> PFMDocument:
                 key = key.strip()
                 val = val.strip()
                 if key in META_ALLOWLIST:
-                    setattr(doc, key, val)
+                    doc.__dict__[key] = val
                 else:
                     # Enforce custom meta field count limit
                     if len(doc.custom_meta) < MAX_META_FIELDS:

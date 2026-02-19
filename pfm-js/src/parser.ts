@@ -43,6 +43,10 @@ const FORBIDDEN_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
  * ```
  */
 export function parse(text: string): PFMDocument {
+  const MAX_INPUT_SIZE = 100 * 1024 * 1024; // 100MB
+  if (text.length > MAX_INPUT_SIZE) {
+    throw new Error(`Input too large: ${text.length} chars (max ${MAX_INPUT_SIZE})`);
+  }
   const lines = text.split('\n');
   const doc: PFMDocument = {
     formatVersion: '1.0',

@@ -82,14 +82,62 @@
     }
   }
 
+  // ===== Encryption toggle =====
+  const chkEncrypt = $('chk-encrypt');
+  const passwordRow = $('password-row');
+  const encPassword = $('encrypt-password');
+  const encConfirm = $('encrypt-confirm');
+
+  chkEncrypt.addEventListener('change', () => {
+    passwordRow.classList.toggle('hidden', !chkEncrypt.checked);
+    if (!chkEncrypt.checked) {
+      encPassword.value = '';
+      encConfirm.value = '';
+      encPassword.classList.remove('error');
+      encConfirm.classList.remove('error');
+    }
+  });
+
   // ===== Capture =====
   $('btn-capture').addEventListener('click', async () => {
     const btn = $('btn-capture');
     const status = $('capture-status');
     status.textContent = '';
     status.className = 'status';
+
+    // Validate encryption passwords before capture
+    const wantEncrypt = chkEncrypt.checked;
+    if (wantEncrypt) {
+      const pw = encPassword.value;
+      const pw2 = encConfirm.value;
+      encPassword.classList.remove('error');
+      encConfirm.classList.remove('error');
+
+      if (!pw) {
+        encPassword.classList.add('error');
+        status.textContent = 'Enter an encryption password';
+        status.className = 'status error';
+        encPassword.focus();
+        return;
+      }
+      if (pw.length < 8) {
+        encPassword.classList.add('error');
+        status.textContent = 'Password must be at least 8 characters';
+        status.className = 'status error';
+        encPassword.focus();
+        return;
+      }
+      if (pw !== pw2) {
+        encConfirm.classList.add('error');
+        status.textContent = 'Passwords do not match';
+        status.className = 'status error';
+        encConfirm.focus();
+        return;
+      }
+    }
+
     btn.disabled = true;
-    btn.textContent = 'Capturing...';
+    btn.textContent = wantEncrypt ? 'Encrypting...' : 'Capturing...';
 
     try {
       // Get the active tab
@@ -141,10 +189,19 @@
       };
 
       const pfmContent = await PFMSerializer.serialize(sections, meta);
-      const filename = sanitizeFilename(result.title.substring(0, 60)) + '.pfm';
-      pfmDownload(pfmContent, filename, 'text/plain');
+      let filename = sanitizeFilename(result.title.substring(0, 60)) + '.pfm';
 
-      status.textContent = 'Saved ' + filename;
+      if (wantEncrypt) {
+        // Encrypt the PFM content before download
+        const encrypted = await PFMCrypto.encrypt(pfmContent, encPassword.value);
+        filename += '.enc';
+        pfmDownload(encrypted, filename, 'application/octet-stream');
+        status.textContent = 'Encrypted and saved ' + filename;
+      } else {
+        pfmDownload(pfmContent, filename, 'text/plain');
+        status.textContent = 'Saved ' + filename;
+      }
+
       status.className = 'status success';
     } catch (err) {
       status.textContent = err.message;

@@ -112,18 +112,38 @@ class PFMWriter:
 
     @staticmethod
     def write(doc: PFMDocument, path: str, mode: int = 0o644) -> int:
-        """Write a PFMDocument to a file. Returns bytes written.
+        """Write a PFMDocument to a file atomically. Returns bytes written.
+
+        Uses write-to-temp-then-rename to prevent corruption if the process
+        crashes mid-write. For long-running agent tasks that write sections
+        incrementally, use PFMStreamWriter instead — it flushes each section
+        to disk with fsync and supports crash recovery.
 
         PFM-019 fix: Uses explicit file permissions (default 0644).
         For sensitive files, pass mode=0o600.
         """
         import os
+        import tempfile
         data = PFMWriter.serialize(doc)
-        fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, mode)
+        # Atomic write: write to temp file, then rename over target.
+        # This ensures the target file is never partially written.
+        dir_name = os.path.dirname(os.path.abspath(path)) or "."
+        fd, tmp_path = tempfile.mkstemp(dir=dir_name, suffix=".pfm.tmp")
         try:
             with os.fdopen(fd, 'wb') as f:
                 f.write(data)
+                f.flush()
+                os.fsync(f.fileno())
+            # On Windows, target must not exist for os.rename
+            if os.path.exists(path):
+                os.replace(tmp_path, path)
+            else:
+                os.rename(tmp_path, path)
         except Exception:
-            # fd is consumed by fdopen even on error
+            # Clean up temp file on failure
+            try:
+                os.unlink(tmp_path)
+            except OSError:
+                pass
             raise
         return len(data)

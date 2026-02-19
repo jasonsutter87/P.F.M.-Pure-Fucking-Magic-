@@ -28,6 +28,16 @@
       <span class="platform-badge">Grok</span>
       <span class="platform-badge">OpenClaw</span>
     </div>
+    <div class="encrypt-toggle">
+      <label class="toggle-row">
+        <input type="checkbox" id="chk-encrypt">
+        <span class="toggle-label">Encrypt before saving</span>
+      </label>
+      <div class="password-row hidden" id="password-row">
+        <input type="password" id="encrypt-password" placeholder="Enter password" autocomplete="off">
+        <input type="password" id="encrypt-confirm" placeholder="Confirm password" autocomplete="off">
+      </div>
+    </div>
     <button class="btn-primary" id="btn-capture">Save Conversation as .pfm</button>
     <div class="status" id="capture-status"></div>
   </div>

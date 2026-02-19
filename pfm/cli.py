@@ -18,6 +18,7 @@ Commands:
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 from pathlib import Path
 
@@ -65,6 +66,28 @@ def cmd_create(args: argparse.Namespace) -> None:
     output = args.output or "output.pfm"
     nbytes = doc.write(output)
     print(f"Created {output} ({nbytes} bytes)")
+
+    # Optional signing (--sign or PFM_ALWAYS_SIGN env var)
+    sign_secret = getattr(args, 'sign', None) or os.environ.get('PFM_SIGN_SECRET', '')
+    if sign_secret:
+        from pfm.security import sign_document
+        from pfm.reader import PFMReader
+        doc = PFMReader.read(output)
+        sign_document(doc, sign_secret)
+        doc.write(output)
+        print(f"  Signed with HMAC-SHA256")
+
+    # Optional encryption (--encrypt or PFM_ALWAYS_ENCRYPT env var)
+    encrypt_pw = getattr(args, 'encrypt', None) or os.environ.get('PFM_ENCRYPT_PASSWORD', '')
+    if encrypt_pw:
+        from pfm.security import encrypt_document
+        from pfm.reader import PFMReader
+        doc = PFMReader.read(output)
+        encrypted = encrypt_document(doc, encrypt_pw)
+        enc_output = output + ".enc"
+        Path(enc_output).write_bytes(encrypted)
+        Path(output).unlink()
+        print(f"  Encrypted -> {enc_output}")
 
 
 def cmd_inspect(args: argparse.Namespace) -> None:
@@ -246,7 +269,13 @@ def cmd_decrypt(args: argparse.Namespace) -> None:
     """Decrypt an encrypted .pfm file."""
     from pfm.security import decrypt_document
 
-    data = Path(args.path).read_bytes()
+    from pfm.spec import MAX_FILE_SIZE
+    enc_path = Path(args.path)
+    file_size = enc_path.stat().st_size
+    if file_size > MAX_FILE_SIZE:
+        print(f"Error: File size {file_size} exceeds maximum {MAX_FILE_SIZE} bytes", file=sys.stderr)
+        sys.exit(1)
+    data = enc_path.read_bytes()
     password = args.password
     if not password:
         import getpass
@@ -350,6 +379,8 @@ def main() -> None:
     p_create.add_argument("-c", "--content", help="Content string")
     p_create.add_argument("-f", "--file", help="Read content from file")
     p_create.add_argument("--chain", help="Prompt chain")
+    p_create.add_argument("--sign", help="Sign with HMAC-SHA256 secret (or set PFM_SIGN_SECRET env var)")
+    p_create.add_argument("--encrypt", help="Encrypt with password (or set PFM_ENCRYPT_PASSWORD env var)")
 
     # inspect
     p_inspect = sub.add_parser("inspect", help="Inspect a .pfm file")

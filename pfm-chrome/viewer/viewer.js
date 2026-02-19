@@ -14,7 +14,8 @@
     activeIndex: -1,
     filteredSections: [],
     wordWrap: true,
-    checksumValid: false
+    checksumValid: false,
+    wasEncrypted: false
   };
 
   /* ================================================================
@@ -37,20 +38,82 @@
       alert('File too large. Maximum size is 50 MB.');
       return;
     }
-    if (!file.name.toLowerCase().endsWith('.pfm')) {
-      alert('Please select a .pfm file.');
+    const name = file.name.toLowerCase();
+    const isEncrypted = name.endsWith('.pfm.enc') || name.endsWith('.enc');
+    if (!name.endsWith('.pfm') && !isEncrypted) {
+      alert('Please select a .pfm or .pfm.enc file.');
       return;
     }
-    const reader = new FileReader();
-    reader.onerror = function() { alert('Error reading file.'); };
-    reader.onload = e => loadPFM(e.target.result, file.name);
-    reader.readAsText(file, 'utf-8');
+
+    if (isEncrypted) {
+      // Read as ArrayBuffer for encrypted files
+      const reader = new FileReader();
+      reader.onerror = function() { alert('Error reading file.'); };
+      reader.onload = e => promptDecrypt(new Uint8Array(e.target.result), file.name);
+      reader.readAsArrayBuffer(file);
+    } else {
+      const reader = new FileReader();
+      reader.onerror = function() { alert('Error reading file.'); };
+      reader.onload = e => loadPFM(e.target.result, file.name);
+      reader.readAsText(file, 'utf-8');
+    }
   }
 
-  function loadPFM(text, filename) {
+  /* ================================================================
+     Decryption Prompt
+     ================================================================ */
+  let pendingEncData = null;
+  let pendingEncFilename = '';
+
+  function promptDecrypt(data, filename) {
+    pendingEncData = data;
+    pendingEncFilename = filename;
+    $('decrypt-password').value = '';
+    $('decrypt-error').textContent = '';
+    $('decrypt-modal').style.display = 'flex';
+    setTimeout(() => $('decrypt-password').focus(), 50);
+  }
+
+  function closeDecryptModal() {
+    $('decrypt-modal').style.display = 'none';
+    pendingEncData = null;
+    pendingEncFilename = '';
+  }
+
+  async function doDecrypt() {
+    const pw = $('decrypt-password').value;
+    if (!pw) {
+      $('decrypt-error').textContent = 'Enter a password';
+      return;
+    }
+    $('decrypt-error').textContent = '';
+    $('btn-decrypt-ok').textContent = 'Decrypting...';
+    $('btn-decrypt-ok').disabled = true;
+
+    try {
+      const text = await PFMCrypto.decrypt(pendingEncData, pw);
+      const filename = pendingEncFilename.replace(/\.enc$/i, '');
+      closeDecryptModal();
+      loadPFM(text, filename, true);
+    } catch (err) {
+      $('decrypt-error').textContent = 'Wrong password or corrupted file';
+    }
+    $('btn-decrypt-ok').textContent = 'Decrypt';
+    $('btn-decrypt-ok').disabled = false;
+  }
+
+  $('btn-decrypt-ok').addEventListener('click', doDecrypt);
+  $('btn-decrypt-cancel').addEventListener('click', closeDecryptModal);
+  $('decrypt-password').addEventListener('keydown', e => {
+    if (e.key === 'Enter') doDecrypt();
+    if (e.key === 'Escape') closeDecryptModal();
+  });
+
+  function loadPFM(text, filename, wasEncrypted) {
     const doc = PFMParser.parse(text);
     state.doc = doc;
     state.filename = filename || 'untitled.pfm';
+    state.wasEncrypted = !!wasEncrypted;
     state.filteredSections = [...doc.sections];
     state.activeIndex = doc.sections.length > 0 ? 0 : -1;
 
@@ -95,11 +158,29 @@
   function renderChecksumBadge() {
     const badge = $('v-checksum-badge');
     if (state.checksumValid) {
-      badge.textContent = 'VALID';
+      badge.textContent = 'CHECKSUM VALID';
       badge.className = 'badge valid';
     } else {
-      badge.textContent = 'INVALID';
+      badge.textContent = 'CHECKSUM INVALID';
       badge.className = 'badge invalid';
+    }
+    // Signature status badge
+    const signBadge = $('v-signed-badge');
+    if (signBadge) {
+      const hasSig = state.doc && state.doc.meta && state.doc.meta.signature;
+      signBadge.textContent = hasSig ? 'SIGNED' : 'UNSIGNED';
+      signBadge.className = hasSig ? 'badge valid' : 'badge warn';
+    }
+    // Encryption status badge
+    const encBadge = $('v-encrypted-badge');
+    if (encBadge) {
+      if (state.wasEncrypted) {
+        encBadge.textContent = 'ENCRYPTED';
+        encBadge.className = 'badge valid';
+      } else {
+        encBadge.textContent = 'UNENCRYPTED';
+        encBadge.className = 'badge warn';
+      }
     }
   }
 

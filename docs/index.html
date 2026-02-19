@@ -383,6 +383,7 @@ a.topbar-btn { text-decoration: none; }
 }
 .badge.valid { color: var(--green); background: var(--green-bg); }
 .badge.invalid { color: var(--red); background: var(--red-bg); }
+.badge.warn { color: var(--orange); background: rgba(210, 153, 34, 0.1); }
 
 /* Meta */
 .meta-grid {
@@ -1049,7 +1050,7 @@ a.topbar-btn { text-decoration: none; }
   </div>
 
   <div class="landing-footer">
-    <a href="https://github.com/jasonsutter87/P.F.M.">PFM</a> &mdash; Pure Fucking Magic. AI agent output container format.
+    <a href="https://github.com/jasonsutter87/P.F.M.">/PFM</a> &mdash; Pure Fucking Magic. AI agent output container format.
   </div>
 </div>
 
@@ -1072,11 +1073,15 @@ a.topbar-btn { text-decoration: none; }
   <div class="layout">
     <!-- Sidebar -->
     <div class="sidebar">
-      <!-- Checksum -->
+      <!-- Security Status -->
       <div class="sidebar-section">
         <div class="sidebar-section-header">
-          <span>Status</span>
+          <span>Security</span>
           <span class="badge" id="v-checksum-badge"></span>
+        </div>
+        <div style="padding:4px 12px 8px;display:flex;gap:6px;flex-wrap:wrap;">
+          <span class="badge" id="v-signed-badge"></span>
+          <span class="badge" id="v-encrypted-badge"></span>
         </div>
       </div>
 
@@ -1739,17 +1744,34 @@ function handleFile(file) {
     alert('File too large. Maximum size is 50 MB.');
     return;
   }
+  const name = file.name.toLowerCase();
+  const isEncrypted = name.endsWith('.pfm.enc') || name.endsWith('.enc');
   // Validate file extension
-  if (!file.name.toLowerCase().endsWith('.pfm')) {
-    alert('Please select a .pfm file.');
+  if (!name.endsWith('.pfm') && !isEncrypted) {
+    alert('Please select a .pfm or .pfm.enc file.');
     return;
   }
-  const reader = new FileReader();
-  reader.onerror = function() {
-    alert('Error reading file.');
-  };
-  reader.onload = e => loadPFM(e.target.result, file.name);
-  reader.readAsText(file, 'utf-8');
+
+  if (isEncrypted) {
+    const reader = new FileReader();
+    reader.onerror = function() { alert('Error reading file.'); };
+    reader.onload = function(e) {
+      const data = new Uint8Array(e.target.result);
+      const pw = prompt('Enter password to decrypt this file:');
+      if (!pw) return;
+      PFMCrypto.decrypt(data, pw).then(function(text) {
+        loadPFM(text, file.name.replace(/\.enc$/i, ''));
+      }).catch(function() {
+        alert('Decryption failed. Wrong password or corrupted file.');
+      });
+    };
+    reader.readAsArrayBuffer(file);
+  } else {
+    const reader = new FileReader();
+    reader.onerror = function() { alert('Error reading file.'); };
+    reader.onload = e => loadPFM(e.target.result, file.name);
+    reader.readAsText(file, 'utf-8');
+  }
 }
 
 function loadPFM(text, filename) {
@@ -1834,12 +1856,26 @@ function renderFilename() {
 function renderChecksumBadge() {
   const badge = $('v-checksum-badge');
   if (state.checksumValid) {
-    badge.textContent = 'VALID';
+    badge.textContent = 'CHECKSUM VALID';
     badge.className = 'badge valid';
   } else {
-    badge.textContent = 'INVALID';
+    badge.textContent = 'CHECKSUM INVALID';
     badge.className = 'badge invalid';
   }
+  // Signature status
+  const signBadge = $('v-signed-badge');
+  const hasSig = state.doc && state.doc.meta && state.doc.meta.signature;
+  if (hasSig) {
+    signBadge.textContent = 'SIGNED';
+    signBadge.className = 'badge valid';
+  } else {
+    signBadge.textContent = 'UNSIGNED';
+    signBadge.className = 'badge warn';
+  }
+  // Encryption status (if we got here, it's already decrypted/plaintext)
+  const encBadge = $('v-encrypted-badge');
+  encBadge.textContent = 'UNENCRYPTED';
+  encBadge.className = 'badge warn';
 }
 
 function renderMeta() {
@@ -1922,16 +1958,21 @@ function renderContent() {
   const nums = contentLines.map((_, i) => i + 1).join('\n');
   const wrapClass = state.wordWrap ? ' wrap' : '';
 
-  // Highlight search matches if there's an active query
+  // Highlight search matches using safe text-level splitting
+  // (avoids regex on HTML-escaped content which can split entities)
   const query = $('v-search').value.toLowerCase().trim();
-  let escaped = esc(s.content);
+  let contentHtml;
   if (query) {
-    const escapedQuery = esc(query);
-    const re = new RegExp('(' + escapedQuery.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'gi');
-    escaped = escaped.replace(re, '<mark>$1</mark>');
+    const re = new RegExp('(' + query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'gi');
+    const parts = s.content.split(re);
+    contentHtml = parts.map((part, i) =>
+      i % 2 === 1 ? '<mark>' + esc(part) + '</mark>' : esc(part)
+    ).join('');
+  } else {
+    contentHtml = esc(s.content);
   }
 
-  body.innerHTML = `<div class="code-container"><pre class="line-numbers">${nums}</pre><pre class="content-pre${wrapClass}">${escaped}</pre></div>`;
+  body.innerHTML = `<div class="code-container"><pre class="line-numbers">${nums}</pre><pre class="content-pre${wrapClass}">${contentHtml}</pre></div>`;
 
   // Scroll first match into view
   if (query) {
@@ -2029,6 +2070,48 @@ function download(content, filename, mime) {
   URL.revokeObjectURL(url);
 }
 
+
+/* ================================================================
+   PFM Crypto — AES-256-GCM encryption compatible with Python pfm.security
+   ================================================================ */
+const PFMCrypto = {
+  HEADER: '#!PFM-ENC/1.0\n',
+  AAD: new TextEncoder().encode('PFM-ENC/1.0'),
+  PBKDF2_ITERATIONS: 600000,
+
+  async deriveKey(password, salt) {
+    const enc = new TextEncoder();
+    const keyMaterial = await crypto.subtle.importKey(
+      'raw', enc.encode(password), 'PBKDF2', false, ['deriveKey']
+    );
+    return crypto.subtle.deriveKey(
+      { name: 'PBKDF2', salt, iterations: this.PBKDF2_ITERATIONS, hash: 'SHA-256' },
+      keyMaterial,
+      { name: 'AES-GCM', length: 256 },
+      false,
+      ['encrypt', 'decrypt']
+    );
+  },
+
+  async decrypt(data, password) {
+    const enc = new TextEncoder();
+    const header = enc.encode(this.HEADER);
+    for (let i = 0; i < header.length; i++) {
+      if (data[i] !== header[i]) throw new Error('Not an encrypted PFM file');
+    }
+    const payload = data.slice(header.length);
+    if (payload.length < 44) throw new Error('Encrypted payload too short');
+    const salt = payload.slice(0, 16);
+    const nonce = payload.slice(16, 28);
+    const ciphertext = payload.slice(28);
+    const key = await this.deriveKey(password, salt);
+    const plaintext = await crypto.subtle.decrypt(
+      { name: 'AES-GCM', iv: nonce, additionalData: this.AAD },
+      key, ciphertext
+    );
+    return new TextDecoder().decode(plaintext);
+  }
+};
 
 /* ================================================================
    Theme
@@ -2263,12 +2346,15 @@ const PFMSerializer = {
     return content.split('\n').map(line => this.escapeLine(line)).join('\n');
   },
 
-  /** Generate a UUID v4 */
+  /** Generate a UUID v4 using cryptographically secure random values */
   uuid() {
-    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
-      const r = (Math.random() * 16) | 0;
-      return (c === 'x' ? r : (r & 0x3) | 0x8).toString(16);
-    });
+    const bytes = new Uint8Array(16);
+    crypto.getRandomValues(bytes);
+    bytes[6] = (bytes[6] & 0x0f) | 0x40;
+    bytes[8] = (bytes[8] & 0x3f) | 0x80;
+    const hex = Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
+    return hex.substring(0, 8) + '-' + hex.substring(8, 12) + '-' +
+           hex.substring(12, 16) + '-' + hex.substring(16, 20) + '-' + hex.substring(20, 32);
   },
 
   /** Compute SHA-256 checksum of section contents */
@@ -2365,6 +2451,8 @@ const PFMSerializer = {
 /* ================================================================
    Converters — transform various formats into PFM sections + meta
    ================================================================ */
+const MAX_CONVERTER_SECTIONS = 10000;
+
 const Converters = {
   /** Detect format from filename extension */
   detectFormat(filename) {
@@ -2400,6 +2488,7 @@ const Converters = {
         }
       }
       for (const s of data.sections) {
+        if (sections.length >= MAX_CONVERTER_SECTIONS) break;
         if (!s || typeof s.name !== 'string') continue;
         const content = typeof s.content === 'string' ? s.content : JSON.stringify(s.content, null, 2);
         sections.push({ name: s.name.substring(0, 64), content });
@@ -2408,6 +2497,7 @@ const Converters = {
     // Format 2: Flat key-value — each key becomes a section
     else {
       for (const [k, v] of Object.entries(data)) {
+        if (sections.length >= MAX_CONVERTER_SECTIONS) break;
         if (k === '__proto__' || k === 'constructor' || k === 'prototype') continue;
         const content = typeof v === 'string' ? v : JSON.stringify(v, null, 2);
         sections.push({ name: k.substring(0, 64), content });
@@ -2441,6 +2531,7 @@ const Converters = {
     if (nameIdx !== -1 && contentIdx !== -1 && lines.length > 1) {
       // Structured CSV with section name + content columns
       for (let i = 1; i < lines.length; i++) {
+        if (sections.length >= MAX_CONVERTER_SECTIONS) break;
         const cols = this.parseCSVLine(lines[i]);
         const name = (cols[nameIdx] || '').trim().substring(0, 64);
         const content = (cols[contentIdx] || '').trim();

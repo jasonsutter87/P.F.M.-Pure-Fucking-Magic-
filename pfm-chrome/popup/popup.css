@@ -123,6 +123,54 @@ body {
   cursor: not-allowed;
 }
 
+/* Encryption toggle */
+.encrypt-toggle {
+  margin-bottom: 12px;
+}
+.toggle-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 12px;
+}
+.toggle-row input[type="checkbox"] {
+  accent-color: var(--accent);
+  width: 14px;
+  height: 14px;
+}
+.toggle-label {
+  color: var(--text-muted);
+  font-weight: 500;
+}
+.password-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+}
+.password-row.hidden {
+  display: none;
+}
+.password-row input {
+  width: 100%;
+  padding: 7px 10px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  font-size: 12px;
+  font-family: var(--font);
+  outline: none;
+  transition: border-color 150ms;
+}
+.password-row input:focus {
+  border-color: var(--accent);
+}
+.password-row input.error {
+  border-color: var(--red);
+}
+
 /* Status messages */
 .status {
   margin-top: 8px;

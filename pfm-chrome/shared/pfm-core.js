@@ -527,3 +527,80 @@ function pfmDownload(content, filename, mime) {
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
 }
+
+
+/* ================================================================
+   PFM Crypto — AES-256-GCM encryption compatible with Python pfm.security
+   Uses Web Crypto API (available in Chrome extensions).
+   Format: "#!PFM-ENC/1.0\n" + salt(16) + nonce(12) + ciphertext + tag(16)
+   ================================================================ */
+const PFMCrypto = {
+  HEADER: '#!PFM-ENC/1.0\n',
+  AAD: new TextEncoder().encode('PFM-ENC/1.0'),
+  PBKDF2_ITERATIONS: 600000,
+
+  /** Derive an AES-256-GCM CryptoKey from a password and salt */
+  async deriveKey(password, salt) {
+    const enc = new TextEncoder();
+    const keyMaterial = await crypto.subtle.importKey(
+      'raw', enc.encode(password), 'PBKDF2', false, ['deriveKey']
+    );
+    return crypto.subtle.deriveKey(
+      { name: 'PBKDF2', salt, iterations: this.PBKDF2_ITERATIONS, hash: 'SHA-256' },
+      keyMaterial,
+      { name: 'AES-GCM', length: 256 },
+      false,
+      ['encrypt', 'decrypt']
+    );
+  },
+
+  /** Encrypt a PFM string with a password. Returns Uint8Array. */
+  async encrypt(pfmText, password) {
+    const enc = new TextEncoder();
+    const plaintext = enc.encode(pfmText);
+    const salt = crypto.getRandomValues(new Uint8Array(16));
+    const nonce = crypto.getRandomValues(new Uint8Array(12));
+    const key = await this.deriveKey(password, salt);
+
+    const ciphertext = await crypto.subtle.encrypt(
+      { name: 'AES-GCM', iv: nonce, additionalData: this.AAD },
+      key, plaintext
+    );
+
+    // Assemble: header + salt + nonce + ciphertext (includes GCM tag)
+    const header = enc.encode(this.HEADER);
+    const result = new Uint8Array(header.length + 16 + 12 + ciphertext.byteLength);
+    result.set(header, 0);
+    result.set(salt, header.length);
+    result.set(nonce, header.length + 16);
+    result.set(new Uint8Array(ciphertext), header.length + 28);
+    return result;
+  },
+
+  /** Decrypt an encrypted PFM file. Returns plaintext string. */
+  async decrypt(data, password) {
+    // data is Uint8Array
+    const enc = new TextEncoder();
+    const header = enc.encode(this.HEADER);
+
+    // Validate header
+    for (let i = 0; i < header.length; i++) {
+      if (data[i] !== header[i]) throw new Error('Not an encrypted PFM file');
+    }
+
+    const payload = data.slice(header.length);
+    if (payload.length < 44) throw new Error('Encrypted payload too short');
+
+    const salt = payload.slice(0, 16);
+    const nonce = payload.slice(16, 28);
+    const ciphertext = payload.slice(28);
+
+    const key = await this.deriveKey(password, salt);
+    const plaintext = await crypto.subtle.decrypt(
+      { name: 'AES-GCM', iv: nonce, additionalData: this.AAD },
+      key, ciphertext
+    );
+
+    return new TextDecoder().decode(plaintext);
+  }
+};

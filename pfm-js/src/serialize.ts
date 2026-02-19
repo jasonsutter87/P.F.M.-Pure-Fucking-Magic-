@@ -36,6 +36,18 @@ import { computeChecksum } from './checksum.js';
 export async function serialize(doc: PFMDocument): Promise<string> {
   const encoder = new TextEncoder();
 
+  // Validate section names
+  const VALID_NAME = /^[a-z0-9_-]+$/;
+  const RESERVED = new Set(['meta', 'index', 'index-trailing']);
+  for (const s of doc.sections) {
+    if (!s.name || s.name.length > 64 || !VALID_NAME.test(s.name)) {
+      throw new Error(`Invalid section name: '${s.name}'. Only lowercase alphanumeric, hyphens, and underscores allowed (max 64 chars).`);
+    }
+    if (RESERVED.has(s.name)) {
+      throw new Error(`Reserved section name: '${s.name}'`);
+    }
+  }
+
   // Compute checksum
   const checksum = await computeChecksum(doc.sections);
 

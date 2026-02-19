@@ -250,6 +250,7 @@ input { font-family: inherit; }
 }
 .badge.valid { color: var(--green); background: var(--green-bg); }
 .badge.invalid { color: var(--red); background: var(--red-bg); }
+.badge.warn { color: var(--orange); background: rgba(210, 153, 34, 0.1); }
 
 /* Meta */
 .meta-grid {
@@ -461,10 +462,10 @@ input { font-family: inherit; }
   <p class="landing-subtitle">Drop a .pfm file to view it. Everything runs client-side.</p>
 
   <div class="drop-zone" id="drop-zone">
-    <input type="file" id="file-input" accept=".pfm">
+    <input type="file" id="file-input" accept=".pfm,.enc">
     <div class="drop-zone-icon">&#128194;</div>
-    <div class="drop-zone-text">Drop a <strong>.pfm</strong> file here</div>
-    <div class="drop-zone-hint">or click to browse</div>
+    <div class="drop-zone-text">Drop a <strong>.pfm</strong> or <strong>.pfm.enc</strong> file here</div>
+    <div class="drop-zone-hint">or click to browse &mdash; encrypted files will prompt for password</div>
   </div>
 </div>
 
@@ -488,8 +489,12 @@ input { font-family: inherit; }
     <div class="sidebar">
       <div class="sidebar-section">
         <div class="sidebar-section-header">
-          <span>Status</span>
+          <span>Security</span>
           <span class="badge" id="v-checksum-badge"></span>
+        </div>
+        <div style="padding:4px 12px 8px;display:flex;gap:6px;flex-wrap:wrap;">
+          <span class="badge" id="v-signed-badge"></span>
+          <span class="badge" id="v-encrypted-badge"></span>
         </div>
       </div>
       <div class="sidebar-section" id="meta-section">
@@ -534,6 +539,20 @@ input { font-family: inherit; }
       <tr><td style="padding:4px 0;"><span class="kbd">o</span></td><td>Open new file</td></tr>
     </table>
     <button class="topbar-btn" style="margin-top:16px;width:100%;" id="btn-close-shortcuts">Close</button>
+  </div>
+</div>
+
+<!-- ========== DECRYPT PROMPT ========== -->
+<div id="decrypt-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:100;align-items:center;justify-content:center;">
+  <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-lg);padding:24px 32px;max-width:360px;width:90%;box-shadow:var(--shadow);">
+    <h3 style="margin-bottom:8px;font-size:16px;">Encrypted File</h3>
+    <p style="font-size:13px;color:var(--text-muted);margin-bottom:16px;">Enter the password to decrypt this file.</p>
+    <input type="password" id="decrypt-password" placeholder="Password" style="width:100%;padding:8px 12px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;outline:none;margin-bottom:8px;font-family:var(--font);">
+    <div id="decrypt-error" style="font-size:12px;color:var(--red);min-height:18px;margin-bottom:8px;"></div>
+    <div style="display:flex;gap:8px;">
+      <button class="topbar-btn" id="btn-decrypt-cancel" style="flex:1;">Cancel</button>
+      <button class="topbar-btn primary" id="btn-decrypt-ok" style="flex:1;">Decrypt</button>
+    </div>
   </div>
 </div>
 
