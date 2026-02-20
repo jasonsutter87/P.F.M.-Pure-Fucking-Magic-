@@ -354,7 +354,7 @@ function cmdSpells(): void {
   console.log('  accio <file> <section>           Summon a section from a .pfm file');
   console.log('                                   (alias for: pfm read)');
   console.log();
-  console.log('  polyjuice <file> <format>        Transform to another format (json, md)');
+  console.log('  polyjuice <file> <format>        Transform to another format (json, md, csv, txt)');
   console.log('                                   (alias for: pfm convert to <format>)');
   console.log();
   console.log('  prior-incantato <file>            Reveal history and integrity of a document');
@@ -379,7 +379,7 @@ function cmdPolyjuice(args: string[]): void {
     console.log('Usage: pfm polyjuice <path> <format> [-o output]');
     console.log();
     console.log('Transform a .pfm file to another format.');
-    console.log('Formats: json, md');
+    console.log('Formats: json, md, csv, txt');
     return;
   }
   const pos = getPositional(args);
@@ -397,8 +397,12 @@ function cmdPolyjuice(args: string[]): void {
     result = toJSON(doc);
   } else if (format === 'md') {
     result = toMarkdown(doc);
+  } else if (format === 'csv') {
+    result = toCSV(doc);
+  } else if (format === 'txt') {
+    result = toText(doc);
   } else {
-    console.error(`Unsupported format: ${format}. Use: json, md`);
+    console.error(`Unsupported format: ${format}. Use: json, md, csv, txt`);
     process.exit(1);
     return;
   }
