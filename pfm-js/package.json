@@ -1,6 +1,6 @@
 {
   "name": "get-pfm",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "PFM parser for JavaScript/TypeScript. Read and validate .pfm AI agent output files.",
   "type": "module",
   "main": "./dist/cjs/index.cjs",
