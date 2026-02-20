@@ -6,7 +6,7 @@
 [![npm: get-pfm](https://img.shields.io/badge/npm-get--pfm-cb3837.svg)](https://www.npmjs.com/package/get-pfm)
 [![Security: A+](https://img.shields.io/badge/security-A%2B-brightgreen.svg)]()
 [![Web Viewer](https://img.shields.io/badge/web-viewer%20%26%20converter-58a6ff.svg)](https://getpfm.io/)
-[![Chrome Extension](https://img.shields.io/badge/chrome-extension-4285F4.svg)]()
+[![Chrome Extension](https://img.shields.io/badge/chrome-extension%20(in%20review)-4285F4.svg)](https://chromewebstore.google.com/)
 
 
 > A universal container format for AI agent output.
@@ -128,14 +128,9 @@ pfm convert from csv data.csv -o imported.pfm
 
 ### Chrome Extension
 
-Capture AI conversations directly from your browser:
+Capture AI conversations directly from your browser. Available on the [Chrome Web Store](https://chromewebstore.google.com/) (in review).
 
-```
-1. Clone the repo
-2. Open chrome://extensions → Enable Developer Mode
-3. Click "Load unpacked" → select the pfm-chrome/ folder
-4. Visit ChatGPT, Claude, or Gemini — floating "Save as .pfm" button appears
-```
+Supports ChatGPT, Claude, Gemini, Grok, and OpenClaw. One-click capture with optional encryption.
 
 **Features:**
 - Captures conversations from ChatGPT, Claude, and Gemini as .pfm files

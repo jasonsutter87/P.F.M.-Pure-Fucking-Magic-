@@ -132,7 +132,7 @@ Works in any modern browser via CDN or bundler:
 
 ```html
 <script type="module">
-  import { parse, validateChecksum } from 'https://esm.sh/pfm';
+  import { parse, validateChecksum } from 'https://esm.sh/get-pfm';
 
   const response = await fetch('report.pfm');
   const doc = parse(await response.text());
@@ -143,7 +143,7 @@ Works in any modern browser via CDN or bundler:
 ## CommonJS
 
 ```js
-const { parse, getSection } = require('pfm');
+const { parse, getSection } = require('get-pfm');
 ```
 
 ## License
