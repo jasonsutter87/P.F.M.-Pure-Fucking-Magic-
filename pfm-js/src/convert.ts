@@ -41,9 +41,14 @@ const FORBIDDEN_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
 export function fromJSON(json: string): PFMDocument {
   const data = JSON.parse(json);
 
-  // Validate top-level structure
-  if (data === null || typeof data !== 'object' || Array.isArray(data)) {
-    throw new Error('Invalid PFM JSON: expected an object at top level');
+  // If it's not a PFM-structured export, wrap raw JSON as content
+  if (data === null || typeof data !== 'object' || Array.isArray(data) || !('sections' in data)) {
+    return {
+      formatVersion: '1.0',
+      isStream: false,
+      meta: { agent: 'json-import', created: new Date().toISOString().replace(/\.\d{3}Z$/, 'Z') },
+      sections: [{ name: 'content', content: JSON.stringify(data, null, 2) }],
+    };
   }
 
   // Validate and sanitize meta (prevent prototype pollution)

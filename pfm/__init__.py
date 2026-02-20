@@ -5,7 +5,7 @@ AI agent output container format.
 Speed > Indexing > Human Readability > AI Usefulness
 """
 
-__version__ = "0.1.4"
+__version__ = "0.1.5"
 __format_version__ = "1.0"
 
 from pfm.spec import MAGIC, FORMAT_VERSION, SECTION_TYPES

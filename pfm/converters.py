@@ -41,18 +41,23 @@ def to_json(doc: PFMDocument, indent: int = 2) -> str:
 def from_json(json_str: str) -> PFMDocument:
     """Create PFM document from JSON string.
 
-    Validates the structure of the parsed JSON to prevent type confusion attacks.
+    If the JSON has PFM structure (pfm_version, meta, sections), it's parsed
+    as a PFM export. Otherwise, the raw JSON is wrapped as content in a new document.
+
+    Validates the structure of PFM JSON to prevent type confusion attacks.
     Rejects keys that could cause prototype-pollution-like issues in downstream JS.
     """
     data = json.loads(json_str)
 
-    # Validate top-level structure
-    if not isinstance(data, dict):
-        raise ValueError("Invalid PFM JSON: expected a JSON object at top level")
+    # If it's not a PFM-structured export, wrap raw JSON as content
+    if not isinstance(data, dict) or "sections" not in data:
+        doc = PFMDocument.create(agent="json-import")
+        doc.add_section("content", json.dumps(data, indent=2, ensure_ascii=False))
+        return doc
 
     meta = data.get("meta", {})
     if not isinstance(meta, dict):
-        raise ValueError("Invalid PFM JSON: 'meta' must be a JSON object")
+        meta = {}
 
     # Validate all meta values are strings
     safe_meta = {}
@@ -81,7 +86,7 @@ def from_json(json_str: str) -> PFMDocument:
 
     sections = data.get("sections", [])
     if not isinstance(sections, list):
-        raise ValueError("Invalid PFM JSON: 'sections' must be an array")
+        sections = []
 
     for section in sections:
         if not isinstance(section, dict):

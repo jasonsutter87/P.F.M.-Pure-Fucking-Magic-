@@ -25,7 +25,7 @@ import { validateChecksum } from './checksum.js';
 import { toJSON, fromJSON, toMarkdown } from './convert.js';
 import type { PFMDocument } from './types.js';
 
-const VERSION = '0.1.4';
+const VERSION = '0.1.5';
 
 function printUsage(): void {
   console.log('PFM - Pure Fucking Magic');
