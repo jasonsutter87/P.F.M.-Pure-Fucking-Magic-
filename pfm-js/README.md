@@ -23,6 +23,11 @@ pfm validate output.pfm
 pfm convert to json output.pfm -o output.json
 pfm identify output.pfm
 
+# Export conversations to fine-tuning data
+pfm export ./conversations/ -o training.jsonl --format openai
+pfm export ./conversations/ -o training.jsonl --format alpaca
+pfm export ./conversations/ -o training.jsonl --format sharegpt
+
 # Pipe from stdin
 echo "Hello" | pfm create -a cli -o hello.pfm
 ```
@@ -35,6 +40,7 @@ Every command has a Harry Potter spell alias. Run `pfm spells` for the full spel
 pfm accio report.pfm content            # Summon a section
 pfm polyjuice report.pfm json           # Transform to another format
 pfm prior-incantato report.pfm          # Full provenance + integrity check
+pfm pensieve ./conversations/           # Extract training data (Pensieve)
 ```
 
 ## Quick Start
@@ -110,6 +116,18 @@ Serialize a document to .pfm text format. Computes checksum and byte-offset inde
 toJSON(doc: PFMDocument, indent?: number): string
 fromJSON(json: string): PFMDocument
 toMarkdown(doc: PFMDocument): string
+```
+
+### Export (Fine-Tuning Data)
+
+```ts
+import { exportDocument, exportDocuments, loadAndExport } from 'get-pfm/export';
+
+// Export a directory of .pfm files to OpenAI JSONL
+const { lines, totalTurns, fileCount } = loadAndExport('./conversations/', 'openai');
+fs.writeFileSync('training.jsonl', lines.join('\n') + '\n');
+
+// Formats: 'openai' | 'alpaca' | 'sharegpt'
 ```
 
 ### Types

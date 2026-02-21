@@ -8,6 +8,7 @@
  *   pfm read      - Read a specific section from a .pfm file
  *   pfm validate  - Validate structure and checksum
  *   pfm convert   - Convert to/from JSON, Markdown
+ *   pfm export    - Export conversations to fine-tuning JSONL
  *   pfm identify  - Quick check if a file is PFM format
  *   pfm spells    - List all PFM spells
  *
@@ -15,6 +16,7 @@
  *   pfm accio            - Summon a section (alias for read)
  *   pfm polyjuice        - Transform format (alias for convert to)
  *   pfm prior-incantato  - Integrity + provenance (alias for validate)
+ *   pfm pensieve         - Extract training data (alias for export)
  */
 
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
@@ -23,9 +25,11 @@ import { parse, isPFM, getSection } from './parser.js';
 import { serialize } from './serialize.js';
 import { validateChecksum } from './checksum.js';
 import { toJSON, fromJSON, toMarkdown, fromText, fromMarkdown, fromCSV, toCSV, toText } from './convert.js';
+import { loadAndExport } from './export.js';
+import type { ExportFormat } from './export.js';
 import type { PFMDocument } from './types.js';
 
-const VERSION = '0.1.9';
+const VERSION = '0.2.0';
 
 function printUsage(): void {
   console.log('PFM - Pure Fucking Magic');
@@ -37,6 +41,7 @@ function printUsage(): void {
   console.log('  pfm validate output.pfm');
   console.log('  pfm convert to json output.pfm -o output.json');
   console.log('  pfm convert from json data.json -o imported.pfm');
+  console.log('  pfm export ./conversations/ -o training.jsonl --format openai');
   console.log('  pfm identify output.pfm');
   console.log();
   console.log('Pipe from stdin:');
@@ -46,6 +51,7 @@ function printUsage(): void {
   console.log('  pfm accio report.pfm content         Summon a section');
   console.log('  pfm polyjuice report.pfm json         Transform format');
   console.log('  pfm prior-incantato report.pfm        Integrity + provenance');
+  console.log('  pfm pensieve ./conversations/         Extract training data');
   console.log();
   console.log("Run 'pfm spells' for the full spellbook.");
   console.log("Run 'pfm <command> --help' for details on any command.");
@@ -79,7 +85,7 @@ function hasFlag(args: string[], flag: string, shortFlag?: string): boolean {
 
 function getPositional(args: string[]): string[] {
   const positional: string[] = [];
-  const flags = new Set(['-a', '--agent', '-m', '--model', '-c', '--content', '-o', '--output', '-f', '--file', '-s', '--secret', '-p', '--password']);
+  const flags = new Set(['-a', '--agent', '-m', '--model', '-c', '--content', '-o', '--output', '-f', '--file', '-s', '--secret', '-p', '--password', '--format']);
   for (let i = 0; i < args.length; i++) {
     if (flags.has(args[i])) {
       i++; // skip value
@@ -381,6 +387,9 @@ function cmdSpells(): void {
   console.log('  prior-incantato <file>            Reveal history and integrity of a document');
   console.log('                                   (alias for: pfm validate + provenance)');
   console.log();
+  console.log('  pensieve <path> [-o out] [--fmt]  Extract memories for training data');
+  console.log('                                   (alias for: pfm export)');
+  console.log();
   console.log('Note: fidelius (encrypt), revelio (decrypt), unbreakable-vow (sign),');
   console.log('and vow-kept (verify) are available in the Python CLI.');
   console.log('Install with: pip install get-pfm');
@@ -481,6 +490,45 @@ async function cmdPriorIncantato(args: string[]): Promise<void> {
   console.log(`  Sections:   ${doc.sections.map((s) => s.name).join(', ')}`);
 }
 
+function cmdExport(args: string[]): void {
+  if (hasFlag(args, '--help', '-h')) {
+    console.log('Usage: pfm export <path> [-o output] [--format openai|alpaca|sharegpt]');
+    console.log();
+    console.log('Export .pfm conversations to fine-tuning JSONL.');
+    console.log('  path      .pfm file or directory containing .pfm files');
+    console.log('  -o        Output JSONL file (default: training.jsonl)');
+    console.log('  --format  Export format: openai (default), alpaca, sharegpt');
+    return;
+  }
+  const pos = getPositional(args);
+  if (pos.length === 0) {
+    console.error('Usage: pfm export <path> [-o output] [--format openai|alpaca|sharegpt]');
+    process.exit(1);
+  }
+  const pathArg = pos[0];
+  const output = getFlag(args, '--output', '-o') || 'training.jsonl';
+  const format = (getFlag(args, '--format') || 'openai') as ExportFormat;
+
+  const validFormats = new Set(['openai', 'alpaca', 'sharegpt']);
+  if (!validFormats.has(format)) {
+    console.error(`Error: Unknown format '${format}'. Use: openai, alpaca, sharegpt`);
+    process.exit(1);
+  }
+
+  try {
+    const { lines, totalTurns, fileCount } = loadAndExport(pathArg, format);
+    if (lines.length === 0) {
+      console.error('Error: No exportable conversations found');
+      process.exit(1);
+    }
+    writeFileSync(output, lines.join('\n') + '\n', 'utf-8');
+    console.log(`Exported ${fileCount} conversations (${totalTurns} turns) -> ${output}`);
+  } catch (err) {
+    console.error(`Error: ${err instanceof Error ? err.message : String(err)}`);
+    process.exit(1);
+  }
+}
+
 async function main(): Promise<void> {
   const args = process.argv.slice(2);
 
@@ -530,6 +578,10 @@ async function main(): Promise<void> {
       break;
     case 'prior-incantato':
       await cmdPriorIncantato(rest);
+      break;
+    case 'export':
+    case 'pensieve':
+      cmdExport(rest);
       break;
     default:
       console.error(`Unknown command: ${command}`);

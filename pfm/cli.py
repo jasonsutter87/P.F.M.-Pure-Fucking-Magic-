@@ -7,6 +7,7 @@ Commands:
   pfm read     - Read a specific section from a .pfm file
   pfm validate - Validate a .pfm file (checksum, structure)
   pfm convert  - Convert to/from JSON, CSV, TXT, Markdown
+  pfm export   - Export .pfm conversations to fine-tuning JSONL
   pfm encrypt  - Encrypt a .pfm file with AES-256-GCM
   pfm decrypt  - Decrypt an encrypted .pfm file
   pfm sign     - Sign a .pfm file with HMAC-SHA256
@@ -263,6 +264,46 @@ def cmd_view(args: argparse.Namespace) -> None:
     run_viewer(path)
 
 
+def cmd_export(args: argparse.Namespace) -> None:
+    """Export .pfm conversations to fine-tuning JSONL."""
+    from pfm.export import load_pfm_paths, export_documents
+    from pfm.reader import PFMReader
+
+    path = args.path
+    fmt = args.format
+    output = args.output or "training.jsonl"
+
+    # Reject path traversal in output
+    if ".." in Path(output).parts:
+        print("Error: Output path must not contain '..' (path traversal)", file=sys.stderr)
+        sys.exit(1)
+
+    try:
+        pfm_paths = load_pfm_paths(path)
+    except FileNotFoundError as e:
+        print(f"Error: {e}", file=sys.stderr)
+        sys.exit(1)
+
+    if not pfm_paths:
+        print(f"Error: No .pfm files found in {path}", file=sys.stderr)
+        sys.exit(1)
+
+    docs = []
+    for p in pfm_paths:
+        try:
+            docs.append(PFMReader.read(str(p)))
+        except Exception as e:
+            print(f"Warning: Skipping {p}: {e}", file=sys.stderr)
+
+    if not docs:
+        print("Error: No valid .pfm files to export", file=sys.stderr)
+        sys.exit(1)
+
+    lines, total_turns = export_documents(docs, fmt)
+    Path(output).write_text("\n".join(lines) + "\n", encoding="utf-8")
+    print(f"Exported {len(docs)} conversations ({total_turns} turns) -> {output}")
+
+
 def cmd_encrypt(args: argparse.Namespace) -> None:
     """Encrypt a .pfm file with AES-256-GCM."""
     from pfm.reader import PFMReader
@@ -400,6 +441,9 @@ def cmd_spells(args: argparse.Namespace) -> None:
     print()
     print("  prior-incantato <file>            Reveal history and integrity of a document")
     print("                                   (alias for: pfm validate)")
+    print()
+    print("  pensieve <path> [-o out] [--fmt]  Extract memories for training data")
+    print("                                   (alias for: pfm export)")
     print()
     print("Usage:")
     print("  pfm accio report.pfm content")
@@ -582,6 +626,18 @@ def main() -> None:
     p_prior = sub.add_parser("prior-incantato", help="Reveal history and integrity")
     p_prior.add_argument("path", help="Path to .pfm file")
 
+    # export
+    p_export = sub.add_parser("export", help="Export .pfm conversations to fine-tuning JSONL")
+    p_export.add_argument("path", help="Path to .pfm file or directory")
+    p_export.add_argument("-o", "--output", help="Output JSONL file (default: training.jsonl)")
+    p_export.add_argument("--format", choices=["openai", "alpaca", "sharegpt"], default="openai", help="Export format (default: openai)")
+
+    # pensieve (alias for export)
+    p_pensieve = sub.add_parser("pensieve", help="Extract memories for training (Pensieve)")
+    p_pensieve.add_argument("path", help="Path to .pfm file or directory")
+    p_pensieve.add_argument("-o", "--output", help="Output JSONL file (default: training.jsonl)")
+    p_pensieve.add_argument("--format", choices=["openai", "alpaca", "sharegpt"], default="openai", help="Export format (default: openai)")
+
     args = parser.parse_args()
 
     if not args.command:
@@ -599,6 +655,7 @@ def main() -> None:
         print("  pfm decrypt output.pfm.enc -p mypassword")
         print("  pfm sign output.pfm -s mysecret")
         print("  pfm verify output.pfm -s mysecret")
+        print("  pfm export ./conversations/ -o training.jsonl --format openai")
         print("  pfm identify output.pfm")
         print()
         print("Pipe from stdin:")
@@ -612,6 +669,7 @@ def main() -> None:
         print("  pfm revelio report.pfm.enc            Decrypt (Revelio)")
         print("  pfm unbreakable-vow report.pfm        Sign (Unbreakable Vow)")
         print("  pfm prior-incantato report.pfm        Integrity + provenance")
+        print("  pfm pensieve ./conversations/         Extract training data")
         print()
         print("Run 'pfm spells' for the full spellbook.")
         print("Run 'pfm <command> --help' for details on any command.")
@@ -638,6 +696,8 @@ def main() -> None:
         "unbreakable-vow": cmd_sign,
         "vow-kept": cmd_verify,
         "prior-incantato": cmd_prior_incantato,
+        "export": cmd_export,
+        "pensieve": cmd_export,
     }
 
     commands[args.command](args)

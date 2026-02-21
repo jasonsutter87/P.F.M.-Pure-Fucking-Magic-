@@ -132,6 +132,12 @@ pfm convert to json output.pfm -o output.json
 pfm convert to md output.pfm -o output.md
 pfm convert from json data.json -o imported.pfm
 pfm convert from csv data.csv -o imported.pfm
+
+# Export conversations to fine-tuning data
+pfm export ./conversations/ -o training.jsonl --format openai
+pfm export ./conversations/ -o training.jsonl --format alpaca
+pfm export ./conversations/ -o training.jsonl --format sharegpt
+pfm export chat.pfm -o training.jsonl              # single file
 ```
 
 ### Spells
@@ -146,6 +152,7 @@ pfm revelio report.pfm.enc              # Decrypt (Revelio)
 pfm unbreakable-vow report.pfm          # Sign (Unbreakable Vow)
 pfm vow-kept report.pfm                 # Verify signature
 pfm prior-incantato report.pfm          # Full provenance + integrity check
+pfm pensieve ./conversations/           # Extract training data (Pensieve)
 ```
 
 ```python
@@ -291,6 +298,7 @@ In this exact order:
 4. **Audit trails** — Chain and tool sections preserve the full generation context
 5. **Selective reading** — Index-based access means you can grab just the section you need from large files
 6. **Format interop** — Convert to/from JSON, CSV, TXT, MD without losing structure
+7. **Training data export** — Export conversations to OpenAI, Alpaca, or ShareGPT JSONL for fine-tuning
 
 ---
 
@@ -306,6 +314,7 @@ pfm/
 │   ├── reader.py               # Full parser + indexed lazy reader
 │   ├── stream.py               # Streaming writer for real-time output
 │   ├── converters.py           # JSON, CSV, TXT, Markdown (both directions)
+│   ├── export.py               # Fine-tuning data export (OpenAI, Alpaca, ShareGPT)
 │   ├── security.py             # HMAC signing, AES-256-GCM encryption
 │   ├── spells.py               # Harry Potter spell aliases (accio, fidelius, etc.)
 │   ├── cli.py                  # Command-line interface (+ spell commands)
